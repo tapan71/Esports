@@ -16,5 +16,8 @@
         // Navigation properties
         public ICollection<TeamStaff> TeamStaff { get; set; }
         public ICollection<TeamMembership> TeamMemberships { get; set; }
+
+        public ICollection<DailySchedule> DailySchedules { get; set; } = new List<DailySchedule>();
+        public ICollection<PlayerMatchRecord> PlayerMatchRecords { get; set; } = new List<PlayerMatchRecord>();
     }
 }
