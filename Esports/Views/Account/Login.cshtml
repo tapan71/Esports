@@ -1,75 +1,34 @@
 @model Esports.ViewModels.LoginViewModel
-
 @{
     ViewData["Title"] = "Login";
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-5">
+<h2>Login</h2>
 
-        <h2 class="text-center mb-4">Login</h2>
+<form asp-action="Login" asp-route-returnUrl="@ViewBag.ReturnUrl" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-        <form asp-action="Login" method="post">
-
-            <div asp-validation-summary="ModelOnly"
-                 class="text-danger mb-3"></div>
-
-            <!-- Email -->
-            <div class="mb-3">
-                <label asp-for="Email" class="form-label"></label>
-
-                <input asp-for="Email"
-                       class="form-control"
-                       placeholder="Enter your email" />
-
-                <span asp-validation-for="Email"
-                      class="text-danger"></span>
-            </div>
-
-            <!-- Password -->
-            <div class="mb-3">
-                <label asp-for="Password" class="form-label"></label>
-
-                <input asp-for="Password"
-                       class="form-control"
-                       placeholder="Enter your password" />
-
-                <span asp-validation-for="Password"
-                      class="text-danger"></span>
-            </div>
-
-            <!-- Remember Me -->
-            <div class="form-check mb-3">
-                <input asp-for="RememberMe"
-                       class="form-check-input" />
-
-                <label asp-for="RememberMe"
-                       class="form-check-label">
-                </label>
-            </div>
-
-            <!-- Login Button -->
-            <button type="submit"
-                    class="btn btn-primary w-100">
-                Login
-            </button>
-
-        </form>
-
-        <div class="text-center mt-3">
-            <span>Don't have an account?</span>
-
-            <a asp-controller="Account"
-               asp-action="Register">
-                Register
-            </a>
-        </div>
-
+    <div class="mb-3">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
     </div>
-</div>
+
+    <div class="mb-3">
+        <label asp-for="Password" class="form-label"></label>
+        <input asp-for="Password" class="form-control" />
+        <span asp-validation-for="Password" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="RememberMe" class="form-check-input" />
+        <label asp-for="RememberMe" class="form-check-label"></label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+    <a asp-action="Register" class="btn btn-link">Create an account</a>
+</form>
 
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    <partial name="_ValidationScriptsPartial" />
 }

@@ -10,12 +10,28 @@ namespace Esports.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
 
+        private static readonly string[] AllowedRoles = { "Owner", "Coach", "Player" };
+
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+        }
+
+        private async Task<IActionResult> RedirectByRole(ApplicationUser user)
+        {
+            if (await _userManager.IsInRoleAsync(user, "Owner"))
+                return RedirectToAction("Owner", "Dashboard");
+
+            if (await _userManager.IsInRoleAsync(user, "Coach"))
+                return RedirectToAction("Coach", "Dashboard");
+
+            if (await _userManager.IsInRoleAsync(user, "Player"))
+                return RedirectToAction("Player", "Dashboard");
+
+            return RedirectToAction("Login");
         }
 
         // GET: /Account/Register
@@ -35,6 +51,12 @@ namespace Esports.Controllers
                 return View(model);
             }
 
+            if (!AllowedRoles.Contains(model.Role))
+            {
+                ModelState.AddModelError("Role", "Invalid role selected.");
+                return View(model);
+            }
+
             var user = new ApplicationUser
             {
                 FullName = model.FullName,
@@ -48,10 +70,8 @@ namespace Esports.Controllers
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, model.Role);
-
                 await _signInManager.SignInAsync(user, isPersistent: false);
-
-                return RedirectToAction("Index", "Home");
+                return await RedirectByRole(user);
             }
 
             foreach (var error in result.Errors)
@@ -64,8 +84,15 @@ namespace Esports.Controllers
 
         // GET: /Account/Login
         [HttpGet]
-        public IActionResult Login(string? returnUrl = null)
+        public async Task<IActionResult> Login(string? returnUrl = null)
         {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser != null)
+                    return await RedirectByRole(currentUser);
+            }
+
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
@@ -90,19 +117,16 @@ namespace Esports.Controllers
 
             if (result.Succeeded)
             {
-                if (!string.IsNullOrEmpty(returnUrl) &&
-                    Url.IsLocalUrl(returnUrl))
+                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 {
                     return Redirect(returnUrl);
                 }
 
-                return RedirectToAction("Index", "Home");
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                return await RedirectByRole(user!);
             }
 
-            ModelState.AddModelError(
-                "",
-                "Invalid email or password.");
-
+            ModelState.AddModelError("", "Invalid email or password.");
             return View(model);
         }
 
@@ -112,8 +136,14 @@ namespace Esports.Controllers
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
+            return RedirectToAction("Login");
+        }
 
-            return RedirectToAction("Index", "Home");
+        // GET: /Account/AccessDenied
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
     }
 }
