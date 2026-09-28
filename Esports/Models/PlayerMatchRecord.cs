@@ -1,4 +1,4 @@
-﻿namespace Esports.Models
+﻿    namespace Esports.Models
 {
     public class PlayerMatchRecord
     {
