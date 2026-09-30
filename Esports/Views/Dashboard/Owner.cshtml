@@ -1,10 +1,167 @@
+@model Esports.ViewModels.OwnerDashboardViewModel
 @{
     ViewData["Title"] = "Owner Dashboard";
 }
 
-<h2>Owner Dashboard</h2>
-<p>Welcome, @User.Identity?.Name</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Welcome, @Model.OwnerName</h2>
+        <p class="text-muted">Organization Overview & Team Operations</p>
+    </div>
+    <a asp-controller="Team" asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Create New Team</a>
+</div>
 
-<form asp-controller="Account" asp-action="Logout" method="post">
-    <button type="submit" class="btn btn-outline-danger">Logout</button>
-</form>
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-primary text-white p-3">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="text-white-50 text-uppercase">Owned Teams</h6>
+                    <h2 class="fw-bold">@Model.Teams.Count</h2>
+                </div>
+                <i class="bi bi-shield-shaded fs-1 text-white-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-success text-white p-3">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="text-white-50 text-uppercase">Total Prize Won</h6>
+                    <h2 class="fw-bold">$@Model.TotalPrizeMoney.ToString("N2")</h2>
+                </div>
+                <i class="bi bi-trophy-fill fs-1 text-white-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-info text-white p-3">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="text-white-50 text-uppercase">Matches Logged</h6>
+                    <h2 class="fw-bold">@Model.TotalMatchesLogged</h2>
+                </div>
+                <i class="bi bi-controller fs-1 text-white-50"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-people-fill text-primary me-2"></i>My Esports Teams</h5>
+                <a asp-controller="Team" asp-action="Index" class="btn btn-sm btn-outline-primary">Manage Teams</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Team</th>
+                                <th>Game</th>
+                                <th>Head Coach</th>
+                                <th>Active Players</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Teams.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">No teams created yet. Click 'Create New Team' to get started.</td>
+                                </tr>
+                            }
+                            @foreach (var team in Model.Teams)
+                            {
+                                var coach = team.TeamStaff.FirstOrDefault(ts => ts.RemovedDate == null);
+                                <tr>
+                                    <td class="fw-semibold">
+                                        @if (!string.IsNullOrEmpty(team.LogoUrl))
+                                        {
+                                            <img src="@team.LogoUrl" alt="logo" class="rounded-circle me-2" style="width:28px;height:28px;object-fit:cover;" />
+                                        }
+                                        @team.Name
+                                    </td>
+                                    <td><span class="badge bg-dark">@team.Game?.Name</span></td>
+                                    <td>
+                                        @if (coach != null)
+                                        {
+                                            <span class="text-success fw-medium"><i class="bi bi-person-badge me-1"></i>@coach.User?.FullName</span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="Team" asp-action="AssignCoach" asp-route-id="@team.Id" class="btn btn-sm btn-outline-warning">Assign Coach</a>
+                                        }
+                                    </td>
+                                    <td><span class="badge bg-secondary">@team.TeamMemberships.Count members</span></td>
+                                    <td class="text-end">
+                                        <a asp-controller="Team" asp-action="Details" asp-route-id="@team.Id" class="btn btn-sm btn-outline-info">Details</a>
+                                        <a asp-controller="Roster" asp-action="Index" asp-route-teamId="@team.Id" class="btn btn-sm btn-outline-primary">Roster</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-event text-danger me-2"></i>Today's Schedules</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.TodaySchedules.Any())
+                {
+                    <p class="text-muted text-center my-3">No events scheduled for today.</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var s in Model.TodaySchedules)
+                        {
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <strong class="text-primary">@s.Title</strong>
+                                    <span class="badge bg-light text-dark">@s.StartTime.ToString(@"hh\:mm") - @s.EndTime.ToString(@"hh\:mm")</span>
+                                </div>
+                                <small class="text-muted">@s.Team?.Name</small>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-award-fill text-warning me-2"></i>Recent Tournaments</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.RecentTournaments.Any())
+                {
+                    <p class="text-muted text-center my-3">No tournaments recorded yet.</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var t in Model.RecentTournaments)
+                        {
+                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>@t.Name</strong><br />
+                                    <small class="text-muted">@t.Team?.Name | @t.Placement</small>
+                                </div>
+                                <span class="badge bg-success">+$@t.PrizePoolWon.ToString("N0")</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

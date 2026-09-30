@@ -1,10 +1,189 @@
+@model Esports.ViewModels.PlayerDashboardViewModel
 @{
     ViewData["Title"] = "Player Dashboard";
 }
 
-<h2>Player Dashboard</h2>
-<p>Welcome, @User.Identity?.Name</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Player Dashboard - @Model.PlayerName</h2>
+        <p class="text-muted">Personal Performance, Team Schedules & Tournament Earnings</p>
+    </div>
+    <a asp-controller="Stats" asp-action="Player" class="btn btn-outline-primary"><i class="bi bi-graph-up me-1"></i> My Full Statistics</a>
+</div>
 
-<form asp-controller="Account" asp-action="Logout" method="post">
-    <button type="submit" class="btn btn-outline-danger">Logout</button>
-</form>
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3 bg-dark text-white">
+            <h6 class="text-white-50 text-uppercase">Current Team</h6>
+            @if (Model.CurrentTeamMembership != null)
+            {
+                <h4 class="fw-bold mb-1">@Model.CurrentTeamMembership.Team.Name</h4>
+                <div>
+                    <span class="badge bg-primary me-1">@Model.CurrentTeamMembership.Team.Game?.Name</span>
+                    <span class="badge bg-info text-dark">@Model.CurrentTeamMembership.GameRole?.RoleName</span>
+                </div>
+            }
+            else
+            {
+                <h5 class="text-warning mb-0">Free Agent / No Active Team</h5>
+            }
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3 bg-success text-white">
+            <h6 class="text-white-50 text-uppercase">Total Career Earnings</h6>
+            <h3 class="fw-bold mb-0">$@Model.TotalEarnings.ToString("N2")</h3>
+            <small class="text-white-50">Base Shares + Bonus Rewards</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3 bg-primary text-white">
+            <h6 class="text-white-50 text-uppercase">Matches Played</h6>
+            <h3 class="fw-bold mb-0">@Model.RecentMatches.Count Recent</h3>
+            <small class="text-white-50">Match history logs</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-primary me-2"></i>My Recent Match Records</h5>
+                <a asp-controller="Record" asp-action="Index" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Opponent</th>
+                                <th>Result</th>
+                                <th class="text-end">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.RecentMatches.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">No match records logged for you yet.</td>
+                                </tr>
+                            }
+                            @foreach (var rec in Model.RecentMatches)
+                            {
+                                <tr>
+                                    <td>@rec.MatchDate.ToString("MMM dd, yyyy")</td>
+                                    <td>@(rec.Opponent ?? "Scrim / Practice")</td>
+                                    <td>
+                                        <span class="badge @(rec.Result == "Win" ? "bg-success" : "bg-danger")">@rec.Result</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-controller="Record" asp-action="Details" asp-route-id="@rec.Id" class="btn btn-sm btn-outline-info">Stats Breakdown</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-trophy-fill text-warning me-2"></i>Tournament Earnings & Bonuses</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tournament</th>
+                                <th>Placement</th>
+                                <th>Base Share</th>
+                                <th>Bonuses</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.TournamentShares.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">No tournament prize distributions yet.</td>
+                                </tr>
+                            }
+                            @foreach (var share in Model.TournamentShares)
+                            {
+                                var bonus = Model.SpecialRewards.Where(r => r.TournamentId == share.TournamentId).Sum(r => r.BonusAmount);
+                                <tr>
+                                    <td class="fw-semibold">@share.Tournament.Name</td>
+                                    <td><span class="badge bg-secondary">@(share.Tournament.Placement ?? "Completed")</span></td>
+                                    <td class="text-success fw-bold">$@share.BaseShare.ToString("N2")</td>
+                                    <td class="text-warning fw-bold">+$@bonus.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-event text-danger me-2"></i>Today's Team Schedule</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.TodaySchedules.Any())
+                {
+                    <p class="text-muted text-center my-3">No team sessions or scrims scheduled for today.</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var s in Model.TodaySchedules)
+                        {
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <strong class="text-primary">@s.Title</strong>
+                                    <span class="badge bg-light text-dark">@s.StartTime.ToString(@"hh\:mm") - @s.EndTime.ToString(@"hh\:mm")</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(s.Description))
+                                {
+                                    <small class="text-muted d-block mt-1">@s.Description</small>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-star-fill text-warning me-2"></i>Special Award Honors</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.SpecialRewards.Any())
+                {
+                    <p class="text-muted text-center my-3">No individual tournament award honors yet.</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var r in Model.SpecialRewards)
+                        {
+                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong class="text-dark"><i class="bi bi-patch-check-fill text-warning me-1"></i>@r.RewardTitle</strong><br />
+                                    <small class="text-muted">@r.Tournament.Name</small>
+                                </div>
+                                <span class="badge bg-success">+$@r.BonusAmount.ToString("N2")</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

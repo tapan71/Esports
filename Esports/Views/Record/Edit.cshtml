@@ -1,0 +1,88 @@
+@model Esports.ViewModels.RecordEditViewModel
+@{
+    ViewData["Title"] = "Edit Match Record";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Performance Log - @Model.PlayerName</h4>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted">Team: <strong>@Model.TeamName</strong> | Player: <strong>@Model.PlayerName</strong></p>
+
+                <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="TeamId" />
+                    <input type="hidden" asp-for="TeamName" />
+                    <input type="hidden" asp-for="PlayerId" />
+                    <input type="hidden" asp-for="PlayerName" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="MatchDate" class="form-label fw-semibold"></label>
+                            <input asp-for="MatchDate" class="form-control" />
+                            <span asp-validation-for="MatchDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Opponent" class="form-label fw-semibold"></label>
+                            <input asp-for="Opponent" class="form-control" />
+                            <span asp-validation-for="Opponent" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Result" class="form-label fw-semibold"></label>
+                        <select asp-for="Result" class="form-select">
+                            <option value="Win">Win</option>
+                            <option value="Loss">Loss</option>
+                            <option value="Draw">Draw</option>
+                        </select>
+                        <span asp-validation-for="Result" class="text-danger small"></span>
+                    </div>
+
+                    <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Player In-Game Stats</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label asp-for="Kills" class="form-label fw-semibold"></label>
+                            <input asp-for="Kills" class="form-control" />
+                            <span asp-validation-for="Kills" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Deaths" class="form-label fw-semibold"></label>
+                            <input asp-for="Deaths" class="form-control" />
+                            <span asp-validation-for="Deaths" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Assists" class="form-label fw-semibold"></label>
+                            <input asp-for="Assists" class="form-control" />
+                            <span asp-validation-for="Assists" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Score" class="form-label fw-semibold"></label>
+                            <input asp-for="Score" class="form-control" />
+                            <span asp-validation-for="Score" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="CoachNotes" class="form-label fw-semibold"></label>
+                        <textarea asp-for="CoachNotes" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="CoachNotes" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,4 +1,5 @@
 using Esports.Models;
+using Esports.Services;
 using Esports.ViewModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,15 +10,18 @@ namespace Esports.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IEmailService _emailService;
 
         private static readonly string[] AllowedRoles = { "Owner", "Coach", "Player" };
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            SignInManager<ApplicationUser> signInManager,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailService = emailService;
         }
 
         private async Task<IActionResult> RedirectByRole(ApplicationUser user)
@@ -53,16 +57,16 @@ namespace Esports.Controllers
 
             if (!AllowedRoles.Contains(model.Role))
             {
-                ModelState.AddModelError("Role", "Invalid role selected.");
+                ModelState.AddModelError("Role", "Invalid role selected. Only Owner, Coach, and Player are permitted.");
                 return View(model);
             }
 
             var user = new ApplicationUser
             {
-                FullName = model.FullName,
-                Email = model.Email,
-                UserName = model.Email,
-                PhoneNumber = model.PhoneNumber
+                FullName = model.FullName.Trim(),
+                Email = model.Email.Trim(),
+                UserName = model.Email.Trim(),
+                PhoneNumber = model.PhoneNumber?.Trim()
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -70,6 +74,7 @@ namespace Esports.Controllers
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, model.Role);
+                await _emailService.SendWelcomeEmailAsync(user.Email!, user.FullName, model.Role);
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 return await RedirectByRole(user);
             }

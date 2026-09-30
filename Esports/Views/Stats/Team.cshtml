@@ -1,0 +1,191 @@
+@model Esports.ViewModels.TeamStatsViewModel
+@{
+    ViewData["Title"] = Model.Team.Name + " - Team Analytics";
+}
+
+<div class="card shadow-sm border-0 mb-4 bg-dark text-white p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            @if (!string.IsNullOrEmpty(Model.Team.LogoUrl))
+            {
+                <img src="@Model.Team.LogoUrl" alt="logo" class="rounded me-3 border" style="width:64px;height:64px;object-fit:cover;" />
+            }
+            else
+            {
+                <div class="rounded bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width:64px;height:64px;">
+                    <i class="bi bi-shield-fill fs-2"></i>
+                </div>
+            }
+            <div>
+                <h2 class="fw-bold mb-0">@Model.Team.Name</h2>
+                <p class="text-white-50 mb-0">Game: <span class="badge bg-primary">@Model.Team.Game?.Name</span> | Founded: @Model.Team.CreatedAt.ToString("MMM yyyy")</p>
+            </div>
+        </div>
+        <div class="text-end mt-3 mt-md-0">
+            <h6 class="text-white-50 text-uppercase mb-0">Total Prize Money</h6>
+            <h2 class="fw-bold text-success mb-0">$@Model.TotalPrizeMoney.ToString("N2")</h2>
+        </div>
+    </div>
+</div>
+
+<!-- Team Performance KPI Cards -->
+<div class="row g-3 mb-4 text-center">
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm border-0 p-3 bg-white">
+            <h6 class="text-muted text-uppercase small mb-1">Matches Played</h6>
+            <h3 class="fw-bold mb-0">@Model.TotalMatches</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm border-0 p-3 bg-white">
+            <h6 class="text-muted text-uppercase small mb-1">Win Rate</h6>
+            <h3 class="fw-bold text-success mb-0">@Model.WinRate%</h3>
+            <small class="text-muted">@Model.TotalWins W - @Model.TotalLosses L - @Model.TotalDraws D</small>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm border-0 p-3 bg-white">
+            <h6 class="text-muted text-uppercase small mb-1">Tournaments</h6>
+            <h3 class="fw-bold text-warning mb-0">@Model.TournamentsCount</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm border-0 p-3 bg-white">
+            <h6 class="text-muted text-uppercase small mb-1">Roster Size</h6>
+            <h3 class="fw-bold text-primary mb-0">@Model.PlayerSummaries.Count</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Roster Performance Aggregate Table -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-people-fill text-primary me-2"></i>Roster Performance Breakdown</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Player</th>
+                        <th>In-Game Role</th>
+                        <th>Logged Matches</th>
+                        <th>Kills</th>
+                        <th>Deaths</th>
+                        <th>Assists</th>
+                        <th>KDA Ratio</th>
+                        <th class="text-end">Full Profile</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.PlayerSummaries.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">No player performance data available for this team.</td>
+                        </tr>
+                    }
+                    @foreach (var p in Model.PlayerSummaries)
+                    {
+                        <tr>
+                            <td class="fw-bold">@p.FullName</td>
+                            <td><span class="badge bg-dark">@p.RoleName</span></td>
+                            <td>@p.MatchesCount</td>
+                            <td class="text-success fw-bold">@p.Kills</td>
+                            <td class="text-danger fw-bold">@p.Deaths</td>
+                            <td class="text-info fw-bold">@p.Assists</td>
+                            <td><span class="badge bg-primary fs-6">@p.KdaRatio.ToString("F2")</span></td>
+                            <td class="text-end">
+                                <a asp-controller="Stats" asp-action="Player" asp-route-id="@p.PlayerId" class="btn btn-sm btn-outline-secondary">View Profile</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Matches & Tournaments -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-success me-2"></i>Recent Team Matches</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Opponent</th>
+                                <th>Player</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.RecentMatches.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-3 text-muted">No recent match records.</td>
+                                </tr>
+                            }
+                            @foreach (var m in Model.RecentMatches)
+                            {
+                                <tr>
+                                    <td>@m.MatchDate.ToString("yyyy-MM-dd")</td>
+                                    <td>@(m.Opponent ?? "Scrim")</td>
+                                    <td>@m.Player.FullName</td>
+                                    <td>
+                                        <span class="badge @(m.Result == "Win" ? "bg-success" : "bg-danger")">@m.Result</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-trophy-fill text-warning me-2"></i>Tournament History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tournament</th>
+                                <th>Placement</th>
+                                <th class="text-end">Prize Pool</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Tournaments.Any())
+                            {
+                                <tr>
+                                    <td colspan="3" class="text-center py-3 text-muted">No tournament records.</td>
+                                </tr>
+                            }
+                            @foreach (var t in Model.Tournaments)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@t.Name</td>
+                                    <td><span class="badge bg-secondary">@(t.Placement ?? "Completed")</span></td>
+                                    <td class="text-end text-success fw-bold">$@t.PrizePoolWon.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-controller="Team" asp-action="Details" asp-route-id="@Model.Team.Id" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Team Overview</a>
+</div>

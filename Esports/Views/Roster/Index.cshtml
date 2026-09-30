@@ -1,0 +1,109 @@
+@model Esports.ViewModels.RosterIndexViewModel
+@{
+    ViewData["Title"] = "Roster - " + Model.Team.Name;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">@Model.Team.Name Roster</h2>
+        <p class="text-muted">Game: @Model.Team.Game?.Name | Active Roster & Membership History</p>
+    </div>
+    <div>
+        <a asp-controller="Team" asp-action="Details" asp-route-id="@Model.Team.Id" class="btn btn-outline-secondary me-2"><i class="bi bi-arrow-left me-1"></i> Team Overview</a>
+        @if (Model.CanManage)
+        {
+            <a asp-action="AddPlayer" asp-route-teamId="@Model.Team.Id" class="btn btn-primary"><i class="bi bi-person-plus-fill me-1"></i> Add Player</a>
+        }
+    </div>
+</div>
+
+<!-- Active Roster -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-person-check-fill text-success me-2"></i>Active Lineup</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Player Name</th>
+                        <th>Email</th>
+                        <th>In-Game Role</th>
+                        <th>Joined Date</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.ActiveMembers.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No active players on the team roster.</td>
+                        </tr>
+                    }
+                    @foreach (var m in Model.ActiveMembers)
+                    {
+                        <tr>
+                            <td class="fw-bold">@m.User?.FullName</td>
+                            <td class="text-muted">@m.User?.Email</td>
+                            <td><span class="badge bg-primary">@m.GameRole?.RoleName</span></td>
+                            <td>@m.JoinedDate.ToString("MMM dd, yyyy")</td>
+                            <td class="text-end">
+                                <a asp-controller="Stats" asp-action="Player" asp-route-id="@m.UserId" class="btn btn-sm btn-outline-secondary"><i class="bi bi-graph-up me-1"></i>Stats</a>
+                                @if (Model.CanManage)
+                                {
+                                    <a asp-action="EditRole" asp-route-id="@m.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i>Role</a>
+                                    <form asp-action="RemovePlayer" asp-route-id="@m.Id" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Move @m.User?.FullName to past roster history?');"><i class="bi bi-person-dash me-1"></i>Remove</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Historical Members -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold text-muted"><i class="bi bi-clock-history me-2"></i>Past Roster Members</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Player Name</th>
+                        <th>Role Served</th>
+                        <th>Joined Date</th>
+                        <th>Departed Date</th>
+                        <th class="text-end">Player Stats</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.PastMembers.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No past roster departures recorded.</td>
+                        </tr>
+                    }
+                    @foreach (var p in Model.PastMembers)
+                    {
+                        <tr>
+                            <td>@p.User?.FullName</td>
+                            <td><span class="badge bg-secondary">@p.GameRole?.RoleName</span></td>
+                            <td>@p.JoinedDate.ToString("MMM dd, yyyy")</td>
+                            <td class="text-danger">@p.LeftDate?.ToString("MMM dd, yyyy")</td>
+                            <td class="text-end">
+                                <a asp-controller="Stats" asp-action="Player" asp-route-id="@p.UserId" class="btn btn-sm btn-outline-secondary">View Career Stats</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

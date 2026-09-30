@@ -1,10 +1,186 @@
+@model Esports.ViewModels.CoachDashboardViewModel
 @{
     ViewData["Title"] = "Coach Dashboard";
 }
 
-<h2>Coach Dashboard</h2>
-<p>Welcome, @User.Identity?.Name</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Coach Dashboard - @Model.CoachName</h2>
+        <p class="text-muted">Assigned Team Strategy & Performance Management</p>
+    </div>
+    @if (Model.AssignedTeam != null)
+    {
+        <div>
+            <a asp-controller="Record" asp-action="Create" asp-route-teamId="@Model.AssignedTeam.Id" class="btn btn-primary me-2"><i class="bi bi-plus-lg me-1"></i> Log Match</a>
+            <a asp-controller="Schedule" asp-action="Create" asp-route-teamId="@Model.AssignedTeam.Id" class="btn btn-outline-secondary"><i class="bi bi-calendar-plus me-1"></i> Add Schedule</a>
+        </div>
+    }
+</div>
 
-<form asp-controller="Account" asp-action="Logout" method="post">
-    <button type="submit" class="btn btn-outline-danger">Logout</button>
-</form>
+@if (Model.AssignedTeam == null)
+{
+    <div class="alert alert-warning shadow-sm">
+        <h5 class="alert-heading"><i class="bi bi-exclamation-circle me-2"></i>No Active Team Assignment</h5>
+        <p class="mb-0">You are currently not assigned to coach any esports team. Once a team Owner assigns you as their Head Coach, your team's roster, schedules, and analytics will appear here.</p>
+    </div>
+}
+else
+{
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 p-3 bg-dark text-white">
+                <div class="d-flex align-items-center">
+                    @if (!string.IsNullOrEmpty(Model.AssignedTeam.LogoUrl))
+                    {
+                        <img src="@Model.AssignedTeam.LogoUrl" alt="logo" class="rounded me-3" style="width:50px;height:50px;object-fit:cover;" />
+                    }
+                    <div>
+                        <h4 class="fw-bold mb-0">@Model.AssignedTeam.Name</h4>
+                        <span class="badge bg-primary">@Model.AssignedTeam.Game?.Name</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 p-3 bg-primary text-white">
+                <h6 class="text-white-50 text-uppercase">Active Roster Size</h6>
+                <h3 class="fw-bold mb-0">@Model.ActiveRoster.Count Players</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 p-3 bg-info text-white">
+                <h6 class="text-white-50 text-uppercase">Today's Sessions</h6>
+                <h3 class="fw-bold mb-0">@Model.TodaySchedules.Count Events</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-people-fill text-primary me-2"></i>Active Team Roster</h5>
+                    <a asp-controller="Roster" asp-action="Index" asp-route-teamId="@Model.AssignedTeam.Id" class="btn btn-sm btn-outline-primary">Manage Roster</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Role</th>
+                                    <th>Joined</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.ActiveRoster.Any())
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">No players in active roster yet.</td>
+                                    </tr>
+                                }
+                                @foreach (var m in Model.ActiveRoster)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@m.User.FullName</td>
+                                        <td><span class="badge bg-info text-dark">@m.GameRole.RoleName</span></td>
+                                        <td>@m.JoinedDate.ToString("MMM dd, yyyy")</td>
+                                        <td class="text-end">
+                                            <a asp-controller="Stats" asp-action="Player" asp-route-id="@m.UserId" class="btn btn-sm btn-outline-secondary">Stats</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-success me-2"></i>Recent Match Performance</h5>
+                    <a asp-controller="Record" asp-action="Index" asp-route-teamId="@Model.AssignedTeam.Id" class="btn btn-sm btn-outline-success">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Player</th>
+                                    <th>Opponent</th>
+                                    <th>Result</th>
+                                    <th class="text-end">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.RecentRecords.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">No recent match logs found.</td>
+                                    </tr>
+                                }
+                                @foreach (var rec in Model.RecentRecords)
+                                {
+                                    <tr>
+                                        <td>@rec.MatchDate.ToString("yyyy-MM-dd")</td>
+                                        <td>@rec.Player.FullName</td>
+                                        <td>@(rec.Opponent ?? "-")</td>
+                                        <td>
+                                            <span class="badge @(rec.Result == "Win" ? "bg-success" : "bg-danger")">@rec.Result</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a asp-controller="Record" asp-action="Details" asp-route-id="@rec.Id" class="btn btn-sm btn-outline-info">View</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-week text-danger me-2"></i>Today's Sessions</h5>
+                    <a asp-controller="Schedule" asp-action="Index" asp-route-teamId="@Model.AssignedTeam.Id" class="btn btn-sm btn-outline-danger">Schedule</a>
+                </div>
+                <div class="card-body">
+                    @if (!Model.TodaySchedules.Any())
+                    {
+                        <p class="text-muted text-center my-3">No schedule planned for today.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var s in Model.TodaySchedules)
+                            {
+                                <li class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between">
+                                        <strong class="text-primary">@s.Title</strong>
+                                        <span class="badge bg-light text-dark">@s.StartTime.ToString(@"hh\:mm") - @s.EndTime.ToString(@"hh\:mm")</span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(s.Description))
+                                    {
+                                        <small class="text-muted d-block mt-1">@s.Description</small>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 bg-light p-3">
+                <h6 class="fw-bold mb-2">Quick Navigation</h6>
+                <div class="d-grid gap-2">
+                    <a asp-controller="Tournament" asp-action="Index" asp-route-teamId="@Model.AssignedTeam.Id" class="btn btn-warning fw-bold text-dark"><i class="bi bi-trophy-fill me-1"></i> Team Tournaments</a>
+                    <a asp-controller="Stats" asp-action="Team" asp-route-id="@Model.AssignedTeam.Id" class="btn btn-dark"><i class="bi bi-graph-up me-1"></i> Team Analytics</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,62 @@
+@model Esports.ViewModels.RewardIndexViewModel
+@{
+    ViewData["Title"] = "Special Rewards";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Tournament Rewards & Bonuses</h2>
+        <p class="text-muted">Individual honors and achievement bonuses</p>
+    </div>
+    @if (Model.CanManage && Model.TournamentId.HasValue)
+    {
+        <a asp-action="Create" asp-route-tournamentId="@Model.TournamentId.Value" class="btn btn-warning fw-bold text-dark"><i class="bi bi-award-fill me-1"></i> Add Reward</a>
+    }
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tournament</th>
+                        <th>Player</th>
+                        <th>Reward Title</th>
+                        <th>Bonus Amount</th>
+                        @if (Model.CanManage)
+                        {
+                            <th class="text-end">Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Rewards.Any())
+                    {
+                        <tr>
+                            <td colspan="@(Model.CanManage ? 5 : 4)" class="text-center py-4 text-muted">No bonus rewards found.</td>
+                        </tr>
+                    }
+                    @foreach (var r in Model.Rewards)
+                    {
+                        <tr>
+                            <td><strong>@r.Tournament?.Name</strong></td>
+                            <td class="fw-semibold">@r.Player?.FullName</td>
+                            <td><span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>@r.RewardTitle</span></td>
+                            <td class="fw-bold text-success">+$@r.BonusAmount.ToString("N2")</td>
+                            @if (Model.CanManage)
+                            {
+                                <td class="text-end">
+                                    <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                                    <form asp-action="Delete" asp-route-id="@r.Id" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove reward?');"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

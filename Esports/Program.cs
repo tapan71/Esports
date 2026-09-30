@@ -1,5 +1,6 @@
 using Esports.Data;
 using Esports.Models;
+using Esports.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +25,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// Application Services DI
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPrizeCalculatorService, PrizeCalculatorService>();
+builder.Services.AddScoped<IStatsCalculatorService, StatsCalculatorService>();
+
 // Where to send users who are not logged in / not allowed
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -40,19 +46,23 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed Owner, Coach and Player roles
+// Seed Owner, Coach and Player roles and initial game data (League of Legends)
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider
         .GetRequiredService<RoleManager<IdentityRole>>();
+    var dbContext = scope.ServiceProvider
+        .GetRequiredService<ApplicationDbContext>();
 
+    // 1. Roles
     string[] roles = { "Owner", "Coach", "Player" };
-
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))
@@ -60,13 +70,36 @@ using (var scope = app.Services.CreateScope())
             await roleManager.CreateAsync(new IdentityRole(role));
         }
     }
-}
 
-app.MapStaticAssets();
+    // 2. Initial Supported Game (League of Legends)
+    try
+    {
+        if (!await dbContext.Games.AnyAsync())
+        {
+            var lol = new Game
+            {
+                Name = "League of Legends",
+                GameRoles = new List<GameRole>
+                {
+                    new GameRole { RoleName = "Top" },
+                    new GameRole { RoleName = "Jungle" },
+                    new GameRole { RoleName = "Mid" },
+                    new GameRole { RoleName = "ADC" },
+                    new GameRole { RoleName = "Support" }
+                }
+            };
+            dbContext.Games.Add(lol);
+            await dbContext.SaveChangesAsync();
+        }
+    }
+    catch
+    {
+        // Database migration may not have been run yet during design/testing
+    }
+}
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Account}/{action=Login}/{id?}")
-    .WithStaticAssets();
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();

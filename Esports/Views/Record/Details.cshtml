@@ -1,0 +1,85 @@
+@model Esports.ViewModels.RecordDetailsViewModel
+@{
+    ViewData["Title"] = "Match Record Details";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-file-earmark-bar-graph me-2"></i>Match Performance Details</h4>
+                <span class="badge @(Model.Record.Result == "Win" ? "bg-success" : "bg-danger") fs-6">
+                    @Model.Record.Result
+                </span>
+            </div>
+            <div class="card-body p-4">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p class="mb-1 text-muted">Player:</p>
+                        <h4 class="fw-bold text-primary">@Model.Record.Player.FullName</h4>
+                        <p class="text-muted">Team: <strong>@Model.Record.Team.Name</strong></p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <p class="mb-1 text-muted">Match Date:</p>
+                        <h5 class="fw-bold">@Model.Record.MatchDate.ToString("MMMM dd, yyyy")</h5>
+                        <p class="text-muted">Opponent: <strong>@(Model.Record.Opponent ?? "Scrim / Practice")</strong></p>
+                    </div>
+                </div>
+
+                <!-- Stats Breakdown Cards -->
+                <div class="row g-3 text-center mb-4">
+                    <div class="col-3">
+                        <div class="p-3 bg-light rounded border">
+                            <h6 class="text-muted text-uppercase mb-1">Kills</h6>
+                            <h3 class="fw-bold text-success mb-0">@Model.Stats.Kills</h3>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-3 bg-light rounded border">
+                            <h6 class="text-muted text-uppercase mb-1">Deaths</h6>
+                            <h3 class="fw-bold text-danger mb-0">@Model.Stats.Deaths</h3>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-3 bg-light rounded border">
+                            <h6 class="text-muted text-uppercase mb-1">Assists</h6>
+                            <h3 class="fw-bold text-info mb-0">@Model.Stats.Assists</h3>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-3 bg-primary text-white rounded">
+                            <h6 class="text-white-50 text-uppercase mb-1">KDA Ratio</h6>
+                            <h3 class="fw-bold mb-0">@Model.Stats.KdaRatio.ToString("F2")</h3>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.Stats.Score > 0)
+                {
+                    <div class="alert alert-secondary d-flex justify-content-between align-items-center mb-4">
+                        <span><i class="bi bi-star-fill text-warning me-2"></i>Performance / Damage Score:</span>
+                        <strong class="fs-5">@Model.Stats.Score.ToString("N0")</strong>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.Record.CoachNotes))
+                {
+                    <div class="card bg-light border-0 p-3 mb-4">
+                        <h6 class="fw-bold text-muted mb-2"><i class="bi bi-chat-quote-fill me-2"></i>Coach Feedback & Strategic Notes</h6>
+                        <p class="mb-0 text-dark">@Model.Record.CoachNotes</p>
+                    </div>
+                }
+
+                <div class="d-flex justify-content-between pt-3 border-top">
+                    <a asp-action="Index" asp-route-teamId="@Model.Record.TeamId" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Records</a>
+                    @if (Model.CanManage)
+                    {
+                        <div>
+                            <a asp-action="Edit" asp-route-id="@Model.Record.Id" class="btn btn-primary me-2"><i class="bi bi-pencil me-1"></i>Edit Record</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

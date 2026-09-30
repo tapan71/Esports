@@ -1,0 +1,49 @@
+@model Esports.ViewModels.AssignCoachViewModel
+@{
+    ViewData["Title"] = "Assign Head Coach - " + Model.TeamName;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-warning text-dark py-3">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-person-badge-fill me-2"></i>Assign Head Coach</h4>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted mb-3">Assigning a coach to <strong>@Model.TeamName</strong>. Note: Coaches can only coach one active team at a time.</p>
+
+                <form asp-action="AssignCoach" asp-route-id="@Model.TeamId" method="post">
+                    <input type="hidden" asp-for="TeamId" />
+                    <input type="hidden" asp-for="TeamName" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="mb-4">
+                        <label asp-for="CoachUserId" class="form-label fw-semibold"></label>
+                        @if (!Model.AvailableCoaches.Any())
+                        {
+                            <div class="alert alert-info">
+                                No available coaches found. All registered coaches are either assigned to other teams or none exist in the system.
+                            </div>
+                        }
+                        else
+                        {
+                            <select asp-for="CoachUserId" asp-items="Model.AvailableCoaches" class="form-select">
+                                <option value="">-- Select Available Coach --</option>
+                            </select>
+                            <span asp-validation-for="CoachUserId" class="text-danger small"></span>
+                        }
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Details" asp-route-id="@Model.TeamId" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-warning fw-bold" @(!Model.AvailableCoaches.Any() ? "disabled" : "")><i class="bi bi-check-circle me-1"></i>Confirm Assignment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
