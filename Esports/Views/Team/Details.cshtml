@@ -23,6 +23,7 @@
                 </div>
             </div>
             <div class="d-flex gap-2 mb-2">
+                <a asp-controller="Schedule" asp-action="Index" asp-route-teamId="@Model.Team.Id" class="btn btn-outline-info"><i class="bi bi-calendar-event me-1"></i> Schedule</a>
                 @if (Model.CanManage)
                 {
                     <a asp-action="Edit" asp-route-id="@Model.Team.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Edit Info</a>

@@ -45,12 +45,59 @@ namespace Esports.Controllers
             return false;
         }
 
+        private async Task<int?> ResolveDefaultTeamIdAsync(string userId)
+        {
+            if (User.IsInRole("Coach"))
+            {
+                var coachTeam = await _context.TeamStaff
+                    .Where(ts => ts.UserId == userId && ts.RemovedDate == null)
+                    .Select(ts => (int?)ts.TeamId)
+                    .FirstOrDefaultAsync();
+                if (coachTeam.HasValue) return coachTeam.Value;
+            }
+
+            if (User.IsInRole("Owner"))
+            {
+                var ownedTeam = await _context.Teams
+                    .Where(t => t.OwnerId == userId)
+                    .Select(t => (int?)t.Id)
+                    .FirstOrDefaultAsync();
+                if (ownedTeam.HasValue) return ownedTeam.Value;
+            }
+
+            if (User.IsInRole("Player"))
+            {
+                var playerTeam = await _context.TeamMemberships
+                    .Where(tm => tm.UserId == userId && tm.LeftDate == null)
+                    .Select(tm => (int?)tm.TeamId)
+                    .FirstOrDefaultAsync();
+                if (playerTeam.HasValue) return playerTeam.Value;
+            }
+
+            return null;
+        }
+
+        private static int GetRoleOrder(string roleName) => roleName.ToLower() switch
+        {
+            "top" => 1,
+            "jungle" => 2,
+            "mid" => 3,
+            "adc" or "bot" or "bottom" => 4,
+            "support" or "sup" => 5,
+            _ => 6
+        };
+
         // GET: /Record?teamId=5&playerId=abc
         [HttpGet]
         public async Task<IActionResult> Index(int? teamId, string? playerId)
         {
             var userId = GetCurrentUserId();
             if (string.IsNullOrEmpty(userId)) return Challenge();
+
+            if (!teamId.HasValue && !User.IsInRole("Player"))
+            {
+                teamId = await ResolveDefaultTeamIdAsync(userId);
+            }
 
             IQueryable<PlayerMatchRecord> query = _context.PlayerMatchRecords
                 .Include(r => r.Team)
@@ -91,13 +138,69 @@ namespace Esports.Controllers
                 query = query.Where(r => r.PlayerId == playerId);
             }
 
-            var records = await query.OrderByDescending(r => r.MatchDate).AsNoTracking().ToListAsync();
+            var records = await query.OrderByDescending(r => r.MatchDate).ThenBy(r => r.Id).AsNoTracking().ToListAsync();
+
+            string? teamName = null;
+            if (teamId.HasValue)
+            {
+                teamName = await _context.Teams.Where(t => t.Id == teamId.Value).Select(t => t.Name).FirstOrDefaultAsync();
+            }
+
+            var playerRoles = await _context.TeamMemberships
+                .Where(tm => tm.LeftDate == null)
+                .Include(tm => tm.GameRole)
+                .ToDictionaryAsync(tm => $"{tm.TeamId}_{tm.UserId}", tm => tm.GameRole != null ? tm.GameRole.RoleName : "Player");
+
+            var teamMatches = records
+                .GroupBy(r => new { r.TeamId, Opponent = r.Opponent ?? "Scrim", Date = r.MatchDate.Date, r.Result })
+                .Select(g =>
+                {
+                    var first = g.First();
+                    var rawCoachNotes = g.FirstOrDefault(r => !string.IsNullOrEmpty(r.CoachNotes))?.CoachNotes;
+                    if (!string.IsNullOrEmpty(rawCoachNotes) && rawCoachNotes.StartsWith("[Match MVP] "))
+                    {
+                        rawCoachNotes = rawCoachNotes.Substring("[Match MVP] ".Length).Trim();
+                    }
+
+                    return new TeamMatchGroupViewModel
+                    {
+                        TeamId = g.Key.TeamId,
+                        TeamName = first.Team?.Name ?? "Team",
+                        Opponent = g.Key.Opponent,
+                        MatchDate = g.Key.Date,
+                        Result = g.Key.Result,
+                        CoachNotes = rawCoachNotes,
+                        LoggedByName = first.LoggedByUser?.FullName,
+                        Players = g.Select(r =>
+                        {
+                            var stats = _statsCalculator.ParseStatsJson(r.StatsJson);
+                            var roleKey = $"{r.TeamId}_{r.PlayerId}";
+                            var role = playerRoles.TryGetValue(roleKey, out var rName) ? rName : "Player";
+                            return new PlayerMatchRecordItemViewModel
+                            {
+                                RecordId = r.Id,
+                                PlayerId = r.PlayerId,
+                                PlayerName = r.Player?.FullName ?? "Player",
+                                RoleName = role,
+                                Kills = stats.Kills,
+                                Deaths = stats.Deaths,
+                                Assists = stats.Assists,
+                                Score = stats.Score,
+                                IsMvp = r.CoachNotes?.Contains("[Match MVP]") == true || r.CoachNotes?.Contains("[MVP]") == true
+                            };
+                        }).OrderBy(p => GetRoleOrder(p.RoleName)).ToList()
+                    };
+                })
+                .OrderByDescending(m => m.MatchDate)
+                .ToList();
 
             var viewModel = new RecordIndexViewModel
             {
                 TeamId = teamId,
+                TeamName = teamName,
                 PlayerId = playerId,
                 Records = records,
+                TeamMatches = teamMatches,
                 CanManage = teamId.HasValue && await CanUserManageTeamAsync(teamId.Value, userId)
             };
 
@@ -144,36 +247,64 @@ namespace Esports.Controllers
 
         // GET: /Record/Create?teamId=5
         [HttpGet]
-        public async Task<IActionResult> Create(int teamId)
+        public async Task<IActionResult> Create(int? teamId)
         {
             var userId = GetCurrentUserId();
             if (string.IsNullOrEmpty(userId)) return Challenge();
 
-            if (!await CanUserManageTeamAsync(teamId, userId))
+            if (!teamId.HasValue || teamId.Value <= 0)
+            {
+                var resolved = await ResolveDefaultTeamIdAsync(userId);
+                if (!resolved.HasValue)
+                {
+                    TempData["ErrorMessage"] = "You must be assigned to or own a team to log match records.";
+                    return RedirectToAction(nameof(Index));
+                }
+                teamId = resolved.Value;
+            }
+
+            if (!await CanUserManageTeamAsync(teamId.Value, userId))
             {
                 return Forbid();
             }
 
-            var team = await _context.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teamId);
+            var team = await _context.Teams
+                .Include(t => t.Game)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == teamId.Value);
+
             if (team == null) return NotFound();
 
-            var activePlayers = await _context.TeamMemberships
-                .Where(tm => tm.TeamId == teamId && tm.LeftDate == null)
+            var activeMembershipsList = await _context.TeamMemberships
+                .Where(tm => tm.TeamId == teamId.Value && tm.LeftDate == null)
                 .Include(tm => tm.User)
                 .Include(tm => tm.GameRole)
-                .Select(tm => new SelectListItem
-                {
-                    Value = tm.UserId,
-                    Text = $"{tm.User.FullName} ({tm.GameRole.RoleName})"
-                })
+                .AsNoTracking()
                 .ToListAsync();
+
+            var activeMemberships = activeMembershipsList
+                .OrderBy(tm => GetRoleOrder(tm.GameRole?.RoleName ?? ""))
+                .ToList();
+
+            var playerStats = activeMemberships.Select(m => new PlayerMatchStatInputModel
+            {
+                PlayerId = m.UserId,
+                PlayerName = m.User.FullName,
+                RoleName = m.GameRole?.RoleName ?? "Player",
+                Kills = 0,
+                Deaths = 0,
+                Assists = 0,
+                Score = 0,
+                IsMvp = false
+            }).ToList();
 
             var viewModel = new RecordCreateViewModel
             {
                 TeamId = team.Id,
                 TeamName = team.Name,
+                GameName = team.Game?.Name ?? "Esports",
                 MatchDate = DateTime.UtcNow.Date,
-                AvailablePlayers = activePlayers
+                PlayerStats = playerStats
             };
 
             return View(viewModel);
@@ -192,57 +323,53 @@ namespace Esports.Controllers
                 return Forbid();
             }
 
-            bool isPlayerOnTeam = await _context.TeamMemberships
-                .AnyAsync(tm => tm.TeamId == model.TeamId && tm.UserId == model.PlayerId && tm.LeftDate == null);
-
-            if (!isPlayerOnTeam)
+            if (model.PlayerStats == null || !model.PlayerStats.Any())
             {
-                ModelState.AddModelError("PlayerId", "The player is not an active member of this team.");
+                ModelState.AddModelError("", "No players are in the team roster to record stats for. Please add players to the roster first.");
             }
 
             if (!ModelState.IsValid)
             {
-                var team = await _context.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == model.TeamId);
+                var team = await _context.Teams.Include(t => t.Game).AsNoTracking().FirstOrDefaultAsync(t => t.Id == model.TeamId);
                 model.TeamName = team?.Name ?? string.Empty;
-                model.AvailablePlayers = await _context.TeamMemberships
-                    .Where(tm => tm.TeamId == model.TeamId && tm.LeftDate == null)
-                    .Include(tm => tm.User)
-                    .Include(tm => tm.GameRole)
-                    .Select(tm => new SelectListItem
-                    {
-                        Value = tm.UserId,
-                        Text = $"{tm.User.FullName} ({tm.GameRole.RoleName})"
-                    })
-                    .ToListAsync();
-
+                model.GameName = team?.Game?.Name ?? "Esports";
                 return View(model);
             }
 
-            var statsObj = new MatchStatsDto
-            {
-                Kills = model.Kills,
-                Deaths = model.Deaths,
-                Assists = model.Assists,
-                Score = model.Score
-            };
+            var opponentName = string.IsNullOrWhiteSpace(model.Opponent) ? "Practice / Scrim" : model.Opponent.Trim();
 
-            var record = new PlayerMatchRecord
+            // Record match performance for each player on the team in this single match
+            foreach (var p in model.PlayerStats!)
             {
-                TeamId = model.TeamId,
-                PlayerId = model.PlayerId,
-                MatchDate = model.MatchDate,
-                Opponent = model.Opponent?.Trim(),
-                Result = model.Result,
-                StatsJson = _statsCalculator.SerializeStats(statsObj),
-                CoachNotes = model.CoachNotes?.Trim(),
-                LoggedByUserId = userId,
-                CreatedAt = DateTime.UtcNow
-            };
+                var statsObj = new MatchStatsDto
+                {
+                    Kills = p.Kills,
+                    Deaths = p.Deaths,
+                    Assists = p.Assists,
+                    Score = p.Score
+                };
 
-            _context.PlayerMatchRecords.Add(record);
+                var coachNoteWithMvp = (p.IsMvp ? "[Match MVP] " : "") + (model.CoachNotes?.Trim() ?? string.Empty);
+
+                var record = new PlayerMatchRecord
+                {
+                    TeamId = model.TeamId,
+                    PlayerId = p.PlayerId,
+                    MatchDate = model.MatchDate.Date,
+                    Opponent = opponentName,
+                    Result = model.Result,
+                    StatsJson = _statsCalculator.SerializeStats(statsObj),
+                    CoachNotes = string.IsNullOrWhiteSpace(coachNoteWithMvp) ? null : coachNoteWithMvp,
+                    LoggedByUserId = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.PlayerMatchRecords.Add(record);
+            }
+
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Player match performance recorded.";
+            TempData["SuccessMessage"] = $"Match against '{opponentName}' logged successfully for all {model.PlayerStats.Count} team players!";
             return RedirectToAction(nameof(Index), new { teamId = model.TeamId });
         }
 
@@ -357,6 +484,33 @@ namespace Esports.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Match record deleted.";
+            return RedirectToAction(nameof(Index), new { teamId });
+        }
+
+        // POST: /Record/DeleteMatch
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteMatch(int teamId, string opponent, DateTime matchDate)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Challenge();
+
+            if (!await CanUserManageTeamAsync(teamId, userId))
+            {
+                return Forbid();
+            }
+
+            var records = await _context.PlayerMatchRecords
+                .Where(r => r.TeamId == teamId && r.Opponent == opponent && r.MatchDate.Date == matchDate.Date)
+                .ToListAsync();
+
+            if (records.Any())
+            {
+                _context.PlayerMatchRecords.RemoveRange(records);
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"Team match vs '{opponent}' deleted successfully.";
+            }
+
             return RedirectToAction(nameof(Index), new { teamId });
         }
     }

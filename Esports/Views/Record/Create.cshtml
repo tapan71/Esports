@@ -1,85 +1,152 @@
 @model Esports.ViewModels.RecordCreateViewModel
 @{
-    ViewData["Title"] = "Log Match Record - " + Model.TeamName;
+    ViewData["Title"] = "Log Team Match Record - " + Model.TeamName;
 }
 
 <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-lg-10">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-primary text-white py-3">
-                <h4 class="mb-0 fw-bold"><i class="bi bi-journal-plus me-2"></i>Log Match Record for @Model.TeamName</h4>
+            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0 fw-bold"><i class="bi bi-controller me-2"></i>Log Team Match Record</h4>
+                    <small class="text-white-50">Record whole team performance for @Model.TeamName (@Model.GameName)</small>
+                </div>
+                <span class="badge bg-dark fs-6">@Model.TeamName</span>
             </div>
+
             <div class="card-body p-4">
                 <form asp-action="Create" method="post">
                     <input type="hidden" asp-for="TeamId" />
                     <input type="hidden" asp-for="TeamName" />
+                    <input type="hidden" asp-for="GameName" />
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label asp-for="PlayerId" class="form-label fw-semibold"></label>
-                            <select asp-for="PlayerId" asp-items="Model.AvailablePlayers" class="form-select">
-                                <option value="">-- Select Active Player --</option>
-                            </select>
-                            <span asp-validation-for="PlayerId" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6">
+                    <!-- Match Metadata Section -->
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">
+                        <i class="bi bi-info-circle me-1"></i> Match Details
+                    </h5>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
                             <label asp-for="MatchDate" class="form-label fw-semibold"></label>
-                            <input asp-for="MatchDate" class="form-control" />
+                            <input asp-for="MatchDate" type="date" value="@Model.MatchDate.ToString("yyyy-MM-dd")" class="form-control" />
                             <span asp-validation-for="MatchDate" class="text-danger small"></span>
                         </div>
-                    </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <label asp-for="Opponent" class="form-label fw-semibold"></label>
-                            <input asp-for="Opponent" class="form-control" placeholder="e.g. Fnatic, Sentinels" />
+                            <input asp-for="Opponent" class="form-control" placeholder="e.g. Gen.G, Bilibili Gaming, Fnatic" />
                             <span asp-validation-for="Opponent" class="text-danger small"></span>
                         </div>
-                        <div class="col-md-6">
+
+                        <div class="col-md-3">
                             <label asp-for="Result" class="form-label fw-semibold"></label>
-                            <select asp-for="Result" class="form-select">
-                                <option value="Win">Win</option>
-                                <option value="Loss">Loss</option>
-                                <option value="Draw">Draw</option>
+                            <select asp-for="Result" class="form-select fw-bold">
+                                <option value="Win" class="text-success">Win</option>
+                                <option value="Loss" class="text-danger">Loss</option>
+                                <option value="Draw" class="text-warning">Draw</option>
                             </select>
                             <span asp-validation-for="Result" class="text-danger small"></span>
                         </div>
                     </div>
 
-                    <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Player In-Game Stats</h5>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3">
-                            <label asp-for="Kills" class="form-label fw-semibold"></label>
-                            <input asp-for="Kills" class="form-control" />
-                            <span asp-validation-for="Kills" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-3">
-                            <label asp-for="Deaths" class="form-label fw-semibold"></label>
-                            <input asp-for="Deaths" class="form-control" />
-                            <span asp-validation-for="Deaths" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-3">
-                            <label asp-for="Assists" class="form-label fw-semibold"></label>
-                            <input asp-for="Assists" class="form-control" />
-                            <span asp-validation-for="Assists" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-3">
-                            <label asp-for="Score" class="form-label fw-semibold"></label>
-                            <input asp-for="Score" class="form-control" placeholder="Damage / Score" />
-                            <span asp-validation-for="Score" class="text-danger small"></span>
-                        </div>
-                    </div>
+                    <!-- Whole Team Scoreboard Section -->
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-people-fill me-1"></i> Team Roster Scoreboard</span>
+                        <small class="text-muted fs-6 fw-normal">Active Players: @Model.PlayerStats.Count</small>
+                    </h5>
 
+                    @if (!Model.PlayerStats.Any())
+                    {
+                        <div class="alert alert-warning text-center py-4 mb-4">
+                            <i class="bi bi-exclamation-triangle-fill display-5 mb-2 d-block text-warning"></i>
+                            <h5>No Active Players on this Team Roster</h5>
+                            <p class="mb-3 text-muted">You cannot record a team match because there are no players currently assigned to @Model.TeamName.</p>
+                            <a asp-controller="Roster" asp-action="Index" asp-route-teamId="@Model.TeamId" class="btn btn-warning">
+                                <i class="bi bi-person-plus me-1"></i> Go to Roster Management
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="min-width: 200px;">Player</th>
+                                        <th style="width: 120px;" class="text-center">Kills</th>
+                                        <th style="width: 120px;" class="text-center">Deaths</th>
+                                        <th style="width: 120px;" class="text-center">Assists</th>
+                                        <th style="min-width: 150px;" class="text-center">Combat Score / Damage</th>
+                                        <th style="width: 100px;" class="text-center">MVP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < Model.PlayerStats.Count; i++)
+                                    {
+                                        <input type="hidden" name="PlayerStats[@i].PlayerId" value="@Model.PlayerStats[i].PlayerId" />
+                                        <input type="hidden" name="PlayerStats[@i].PlayerName" value="@Model.PlayerStats[i].PlayerName" />
+                                        <input type="hidden" name="PlayerStats[@i].RoleName" value="@Model.PlayerStats[i].RoleName" />
+
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-circle bg-secondary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                                                        <i class="bi bi-person-fill"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-bold">@Model.PlayerStats[i].PlayerName</div>
+                                                        <span class="badge bg-primary">@Model.PlayerStats[i].RoleName</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td>
+                                                <input type="number" min="0" max="500" name="PlayerStats[@i].Kills" value="@Model.PlayerStats[i].Kills" class="form-control text-center fw-semibold text-success" />
+                                            </td>
+
+                                            <td>
+                                                <input type="number" min="0" max="500" name="PlayerStats[@i].Deaths" value="@Model.PlayerStats[i].Deaths" class="form-control text-center fw-semibold text-danger" />
+                                            </td>
+
+                                            <td>
+                                                <input type="number" min="0" max="500" name="PlayerStats[@i].Assists" value="@Model.PlayerStats[i].Assists" class="form-control text-center fw-semibold text-info" />
+                                            </td>
+
+                                            <td>
+                                                <input type="number" step="any" min="0" name="PlayerStats[@i].Score" value="@Model.PlayerStats[i].Score" class="form-control text-center" placeholder="e.g. 3500" />
+                                            </td>
+
+                                            <td class="text-center">
+                                                <div class="form-check form-switch d-inline-block">
+                                                    <input type="checkbox" name="PlayerStats[@i].IsMvp" value="true" class="form-check-input" id="mvp_@i" @(Model.PlayerStats[i].IsMvp ? "checked" : "") />
+                                                    <input type="hidden" name="PlayerStats[@i].IsMvp" value="false" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <!-- Coach Notes Section -->
                     <div class="mb-4">
                         <label asp-for="CoachNotes" class="form-label fw-semibold"></label>
-                        <textarea asp-for="CoachNotes" class="form-control" rows="3" placeholder="Strategic feedback, mechanical improvement areas..."></textarea>
+                        <textarea asp-for="CoachNotes" class="form-control" rows="3" placeholder="Strategic feedback, dragon/baron setups, teamfight coordination notes..."></textarea>
                         <span asp-validation-for="CoachNotes" class="text-danger small"></span>
                     </div>
 
-                    <div class="d-flex justify-content-between">
-                        <a asp-action="Index" asp-route-teamId="@Model.TeamId" class="btn btn-outline-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Record</button>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a asp-action="Index" asp-route-teamId="@Model.TeamId" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i> Cancel
+                        </a>
+                        @if (Model.PlayerStats.Any())
+                        {
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle-fill me-1"></i> Save Team Match Record
+                            </button>
+                        }
                     </div>
                 </form>
             </div>

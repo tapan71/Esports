@@ -53,48 +53,17 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed Owner, Coach and Player roles and initial game data (League of Legends)
+// Seed Roles, Games, Teams, Rosters, Staff, Schedules, Tournaments and Match Records
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider
-        .GetRequiredService<RoleManager<IdentityRole>>();
-    var dbContext = scope.ServiceProvider
-        .GetRequiredService<ApplicationDbContext>();
-
-    // 1. Roles
-    string[] roles = { "Owner", "Coach", "Player" };
-    foreach (var role in roles)
-    {
-        if (!await roleManager.RoleExistsAsync(role))
-        {
-            await roleManager.CreateAsync(new IdentityRole(role));
-        }
-    }
-
-    // 2. Initial Supported Game (League of Legends)
     try
     {
-        if (!await dbContext.Games.AnyAsync())
-        {
-            var lol = new Game
-            {
-                Name = "League of Legends",
-                GameRoles = new List<GameRole>
-                {
-                    new GameRole { RoleName = "Top" },
-                    new GameRole { RoleName = "Jungle" },
-                    new GameRole { RoleName = "Mid" },
-                    new GameRole { RoleName = "ADC" },
-                    new GameRole { RoleName = "Support" }
-                }
-            };
-            dbContext.Games.Add(lol);
-            await dbContext.SaveChangesAsync();
-        }
+        await DbSeeder.SeedAsync(scope.ServiceProvider);
     }
-    catch
+    catch (Exception ex)
     {
-        // Database migration may not have been run yet during design/testing
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding dummy data.");
     }
 }
 

@@ -50,26 +50,69 @@ namespace Esports.Controllers
             return await _context.TeamMemberships.AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftDate == null);
         }
 
+        private async Task<int?> ResolveDefaultTeamIdAsync(string userId)
+        {
+            if (User.IsInRole("Coach"))
+            {
+                var coachTeam = await _context.TeamStaff
+                    .Where(ts => ts.UserId == userId && ts.RemovedDate == null)
+                    .Select(ts => (int?)ts.TeamId)
+                    .FirstOrDefaultAsync();
+                if (coachTeam.HasValue) return coachTeam.Value;
+            }
+
+            if (User.IsInRole("Owner"))
+            {
+                var ownedTeam = await _context.Teams
+                    .Where(t => t.OwnerId == userId)
+                    .Select(t => (int?)t.Id)
+                    .FirstOrDefaultAsync();
+                if (ownedTeam.HasValue) return ownedTeam.Value;
+            }
+
+            if (User.IsInRole("Player"))
+            {
+                var playerTeam = await _context.TeamMemberships
+                    .Where(tm => tm.UserId == userId && tm.LeftDate == null)
+                    .Select(tm => (int?)tm.TeamId)
+                    .FirstOrDefaultAsync();
+                if (playerTeam.HasValue) return playerTeam.Value;
+            }
+
+            return null;
+        }
+
         // GET: /Schedule?teamId=5&date=2026-10-01
         [HttpGet]
-        public async Task<IActionResult> Index(int teamId, DateTime? date)
+        public async Task<IActionResult> Index(int? teamId, DateTime? date)
         {
             var userId = GetCurrentUserId();
             if (string.IsNullOrEmpty(userId)) return Challenge();
 
-            if (!await CanUserViewTeamScheduleAsync(teamId, userId))
+            if (!teamId.HasValue || teamId.Value <= 0)
+            {
+                var resolved = await ResolveDefaultTeamIdAsync(userId);
+                if (!resolved.HasValue)
+                {
+                    TempData["ErrorMessage"] = "You must be associated with a team to view or manage schedules.";
+                    return RedirectToAction("Index", "Team");
+                }
+                teamId = resolved.Value;
+            }
+
+            if (!await CanUserViewTeamScheduleAsync(teamId.Value, userId))
             {
                 return Forbid();
             }
 
-            var team = await _context.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teamId);
+            var team = await _context.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teamId.Value);
             if (team == null) return NotFound();
 
             var targetDate = date?.Date ?? DateTime.UtcNow.Date;
 
             var schedules = await _context.DailySchedules
                 .Include(ds => ds.CreatedByUser)
-                .Where(ds => ds.TeamId == teamId && ds.ScheduleDate.Date == targetDate)
+                .Where(ds => ds.TeamId == teamId.Value && ds.ScheduleDate.Date == targetDate)
                 .OrderBy(ds => ds.StartTime)
                 .AsNoTracking()
                 .ToListAsync();
@@ -80,7 +123,7 @@ namespace Esports.Controllers
                 TeamName = team.Name,
                 SelectedDate = targetDate,
                 Schedules = schedules,
-                CanManage = await CanUserManageTeamAsync(teamId, userId)
+                CanManage = await CanUserManageTeamAsync(teamId.Value, userId)
             };
 
             return View(viewModel);
@@ -88,17 +131,28 @@ namespace Esports.Controllers
 
         // GET: /Schedule/Create?teamId=5
         [HttpGet]
-        public async Task<IActionResult> Create(int teamId)
+        public async Task<IActionResult> Create(int? teamId)
         {
             var userId = GetCurrentUserId();
             if (string.IsNullOrEmpty(userId)) return Challenge();
 
-            if (!await CanUserManageTeamAsync(teamId, userId))
+            if (!teamId.HasValue || teamId.Value <= 0)
+            {
+                var resolved = await ResolveDefaultTeamIdAsync(userId);
+                if (!resolved.HasValue)
+                {
+                    TempData["ErrorMessage"] = "You must be assigned as a coach or owner to create team schedules.";
+                    return RedirectToAction("Index", "Team");
+                }
+                teamId = resolved.Value;
+            }
+
+            if (!await CanUserManageTeamAsync(teamId.Value, userId))
             {
                 return Forbid();
             }
 
-            var team = await _context.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teamId);
+            var team = await _context.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teamId.Value);
             if (team == null) return NotFound();
 
             var viewModel = new ScheduleCreateViewModel

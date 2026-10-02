@@ -1,0 +1,124 @@
+@model Esports.ViewModels.ScheduleIndexViewModel
+@{
+    ViewData["Title"] = "Daily Schedule - " + Model.TeamName;
+    var prevDate = Model.SelectedDate.AddDays(-1).ToString("yyyy-MM-dd");
+    var nextDate = Model.SelectedDate.AddDays(1).ToString("yyyy-MM-dd");
+    var todayDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Daily Schedule</h2>
+        <p class="text-muted mb-0">
+            Team: <a asp-controller="Team" asp-action="Details" asp-route-id="@Model.TeamId" class="text-decoration-none fw-semibold">@Model.TeamName</a>
+        </p>
+    </div>
+    <div class="d-flex gap-2 mt-2 mt-md-0">
+        @if (Model.CanManage)
+        {
+            <a asp-action="Create" asp-route-teamId="@Model.TeamId" class="btn btn-primary">
+                <i class="bi bi-calendar-plus me-1"></i> Add Session
+            </a>
+        }
+        <a asp-controller="Team" asp-action="Details" asp-route-id="@Model.TeamId" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Team
+        </a>
+    </div>
+</div>
+
+<!-- Date Navigation Bar -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <a asp-action="Index" asp-route-teamId="@Model.TeamId" asp-route-date="@prevDate" class="btn btn-outline-secondary btn-sm" title="Previous Day">
+                    <i class="bi bi-chevron-left"></i> Previous
+                </a>
+                <a asp-action="Index" asp-route-teamId="@Model.TeamId" asp-route-date="@todayDate" class="btn btn-outline-primary btn-sm @(Model.SelectedDate.Date == DateTime.UtcNow.Date ? "active" : "")">
+                    Today
+                </a>
+                <a asp-action="Index" asp-route-teamId="@Model.TeamId" asp-route-date="@nextDate" class="btn btn-outline-secondary btn-sm" title="Next Day">
+                    Next <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+
+            <form method="get" asp-action="Index" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="teamId" value="@Model.TeamId" />
+                <label for="datePicker" class="small fw-semibold text-muted text-nowrap">Jump to Date:</label>
+                <input id="datePicker" type="date" name="date" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" onchange="this.form.submit()" />
+            </form>
+
+            <div>
+                <span class="badge bg-dark fs-6 py-2 px-3">
+                    <i class="bi bi-calendar-date me-1"></i> @Model.SelectedDate.ToString("dddd, MMMM dd, yyyy")
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedules List -->
+@if (!Model.Schedules.Any())
+{
+    <div class="card shadow-sm border-0 text-center py-5">
+        <div class="card-body">
+            <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+            <h5>No Sessions Scheduled for this Day</h5>
+            <p class="text-muted">There are no practice scrims, VOD reviews, or meetings planned for @Model.SelectedDate.ToString("MMM dd, yyyy").</p>
+            @if (Model.CanManage)
+            {
+                <a asp-action="Create" asp-route-teamId="@Model.TeamId" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Schedule a Session
+                </a>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var session in Model.Schedules)
+        {
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge bg-primary fs-6 py-2 px-3">
+                                        <i class="bi bi-clock me-1"></i>
+                                        @session.StartTime.ToString(@"hh\:mm") - @session.EndTime.ToString(@"hh\:mm")
+                                    </span>
+                                    <h4 class="fw-bold mb-0 text-dark">@session.Title</h4>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(session.Description))
+                                {
+                                    <p class="text-secondary mb-2 mt-2" style="white-space: pre-line;">@session.Description</p>
+                                }
+
+                                <div class="text-muted small">
+                                    <i class="bi bi-person me-1"></i> Scheduled by: <strong>@(session.CreatedByUser?.FullName ?? "Staff")</strong>
+                                </div>
+                            </div>
+
+                            @if (Model.CanManage)
+                            {
+                                <div class="d-flex gap-2">
+                                    <a asp-action="Edit" asp-route-id="@session.Id" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-pencil me-1"></i> Edit
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@session.Id" method="post" onsubmit="return confirm('Are you sure you want to remove this session?');" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-trash me-1"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

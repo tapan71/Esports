@@ -24,19 +24,19 @@
 
                     <div class="mb-3">
                         <label asp-for="ScheduleDate" class="form-label fw-semibold"></label>
-                        <input asp-for="ScheduleDate" class="form-control" />
+                        <input asp-for="ScheduleDate" type="date" value="@Model.ScheduleDate.ToString("yyyy-MM-dd")" class="form-control" />
                         <span asp-validation-for="ScheduleDate" class="text-danger small"></span>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label asp-for="StartTime" class="form-label fw-semibold"></label>
-                            <input asp-for="StartTime" class="form-control" />
+                            <input asp-for="StartTime" type="time" value="@Model.StartTime.ToString(@"hh\:mm")" class="form-control" />
                             <span asp-validation-for="StartTime" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
                             <label asp-for="EndTime" class="form-label fw-semibold"></label>
-                            <input asp-for="EndTime" class="form-control" />
+                            <input asp-for="EndTime" type="time" value="@Model.EndTime.ToString(@"hh\:mm")" class="form-control" />
                             <span asp-validation-for="EndTime" class="text-danger small"></span>
                         </div>
                     </div>

@@ -3,66 +3,244 @@
     ViewData["Title"] = "Match Records";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold mb-0">Match Performance Records</h2>
-        <p class="text-muted">Player and Team Scrim/Tournament Performance Logs</p>
+        <p class="text-muted mb-0">
+            @if (!string.IsNullOrEmpty(Model.TeamName))
+            {
+                <span>Team: <strong>@Model.TeamName</strong> | </span>
+            }
+            Whole-Team Scrims & Tournament Box Scores
+        </p>
     </div>
-    @if (Model.CanManage && Model.TeamId.HasValue)
+    @if (User.IsInRole("Owner") || User.IsInRole("Coach"))
     {
-        <a asp-action="Create" asp-route-teamId="@Model.TeamId.Value" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Log Match Record</a>
+        <a asp-action="Create" asp-route-teamId="@Model.TeamId" class="btn btn-primary mt-2 mt-md-0">
+            <i class="bi bi-controller me-1"></i> Log Team Match Record
+        </a>
     }
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Date</th>
-                        <th>Player</th>
-                        <th>Team</th>
-                        <th>Opponent</th>
-                        <th>Result</th>
-                        <th>Logged By</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.Records.Any())
+<!-- Tabs: Team Match Summaries vs Individual Logs -->
+<ul class="nav nav-pills mb-4" id="recordTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-semibold" id="team-matches-tab" data-bs-toggle="pill" data-bs-target="#teamMatches" type="button" role="tab">
+            <i class="bi bi-shield-shaded me-1"></i> Team Matches (@Model.TeamMatches.Count)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" id="individual-logs-tab" data-bs-toggle="pill" data-bs-target="#individualLogs" type="button" role="tab">
+            <i class="bi bi-table me-1"></i> Player Breakdown Logs (@Model.Records.Count)
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="recordTabsContent">
+    <!-- TAB 1: WHOLE TEAM MATCH SCOREBOARDS -->
+    <div class="tab-pane fade show active" id="teamMatches" role="tabpanel">
+        @if (!Model.TeamMatches.Any())
+        {
+            <div class="card shadow-sm border-0 text-center py-5">
+                <div class="card-body">
+                    <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+                    <h5>No Team Matches Logged Yet</h5>
+                    <p class="text-muted">No whole-team scrim or tournament match performance records found.</p>
+                    @if (User.IsInRole("Owner") || User.IsInRole("Coach"))
                     {
-                        <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">No match performance records found.</td>
-                        </tr>
+                        <a asp-action="Create" asp-route-teamId="@Model.TeamId" class="btn btn-primary">
+                            <i class="bi bi-controller me-1"></i> Log Your First Team Match
+                        </a>
                     }
-                    @foreach (var rec in Model.Records)
-                    {
-                        <tr>
-                            <td>@rec.MatchDate.ToString("yyyy-MM-dd")</td>
-                            <td class="fw-bold">@rec.Player.FullName</td>
-                            <td><span class="badge bg-dark">@rec.Team.Name</span></td>
-                            <td>@(rec.Opponent ?? "Practice / Scrim")</td>
-                            <td>
-                                <span class="badge @(rec.Result == "Win" ? "bg-success" : rec.Result == "Loss" ? "bg-danger" : "bg-warning")">
-                                    @rec.Result
-                                </span>
-                            </td>
-                            <td><small class="text-muted">@rec.LoggedByUser?.FullName</small></td>
-                            <td class="text-end">
-                                <a asp-action="Details" asp-route-id="@rec.Id" class="btn btn-sm btn-outline-info"><i class="bi bi-eye me-1"></i>Stats</a>
-                                @if (User.IsInRole("Owner") || User.IsInRole("Coach"))
-                                {
-                                    <a asp-action="Edit" asp-route-id="@rec.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                                    <form asp-action="Delete" asp-route-id="@rec.Id" method="post" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this match record?');"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-4">
+                @foreach (var match in Model.TeamMatches)
+                {
+                    var isWin = string.Equals(match.Result, "Win", StringComparison.OrdinalIgnoreCase);
+                    var isLoss = string.Equals(match.Result, "Loss", StringComparison.OrdinalIgnoreCase);
+
+                    <div class="card shadow-sm border-0 overflow-hidden">
+                        <!-- Match Header Card -->
+                        <div class="card-header py-3 @(isWin ? "bg-success text-white" : isLoss ? "bg-danger text-white" : "bg-warning text-dark")">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="badge @(isWin ? "bg-white text-success" : isLoss ? "bg-white text-danger" : "bg-dark text-white") fs-6 text-uppercase px-3 py-2">
+                                        @match.Result
+                                    </span>
+                                    <div>
+                                        <h4 class="mb-0 fw-bold">@match.TeamName <span class="fw-normal">vs</span> @match.Opponent</h4>
+                                        <small class="@(isWin || isLoss ? "text-white-50" : "text-muted")">
+                                            <i class="bi bi-calendar-event me-1"></i>@match.MatchDate.ToString("MMMM dd, yyyy")
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="text-end">
+                                        <div class="fw-bold fs-5">
+                                            <span class="badge bg-dark">
+                                                Team K/D/A: @match.TotalKills / @match.TotalDeaths / @match.TotalAssists
+                                            </span>
+                                        </div>
+                                        <small class="@(isWin || isLoss ? "text-white-50" : "text-muted")">
+                                            Combat Score: @match.TotalScore.ToString("N0")
+                                        </small>
+                                    </div>
+                                    @if (User.IsInRole("Owner") || User.IsInRole("Coach"))
+                                    {
+                                        <form asp-action="DeleteMatch" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this entire match record for the whole team?');">
+                                            <input type="hidden" name="teamId" value="@match.TeamId" />
+                                            <input type="hidden" name="opponent" value="@match.Opponent" />
+                                            <input type="hidden" name="matchDate" value="@match.MatchDate.ToString("yyyy-MM-dd")" />
+                                            <button type="submit" class="btn btn-sm btn-outline-light" title="Delete whole team match">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scoreboard Table -->
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 250px;">Player</th>
+                                            <th>Role</th>
+                                            <th class="text-center">Kills</th>
+                                            <th class="text-center">Deaths</th>
+                                            <th class="text-center">Assists</th>
+                                            <th class="text-center">KDA</th>
+                                            <th class="text-center">Combat Score</th>
+                                            <th>Status</th>
+                                            <th class="text-end">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var player in match.Players)
+                                        {
+                                            <tr class="@(player.IsMvp ? "table-warning bg-opacity-25" : "")">
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-circle rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;">
+                                                            <i class="bi bi-person-fill"></i>
+                                                        </div>
+                                                        <strong class="text-dark">@player.PlayerName</strong>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">@player.RoleName</span>
+                                                </td>
+                                                <td class="text-center fw-bold text-success">@player.Kills</td>
+                                                <td class="text-center fw-bold text-danger">@player.Deaths</td>
+                                                <td class="text-center fw-bold text-info">@player.Assists</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-light text-dark border">@player.KdaRatio.ToString("F2")</span>
+                                                </td>
+                                                <td class="text-center font-monospace">@player.Score.ToString("N0")</td>
+                                                <td>
+                                                    @if (player.IsMvp)
+                                                    {
+                                                        <span class="badge bg-warning text-dark"><i class="bi bi-trophy-fill me-1"></i>Match MVP</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-light text-secondary border">Starter</span>
+                                                    }
+                                                </td>
+                                                <td class="text-end">
+                                                    <a asp-action="Details" asp-route-id="@player.RecordId" class="btn btn-sm btn-outline-info">
+                                                        <i class="bi bi-eye me-1"></i>Stats
+                                                    </a>
+                                                    @if (User.IsInRole("Owner") || User.IsInRole("Coach"))
+                                                    {
+                                                        <a asp-action="Edit" asp-route-id="@player.RecordId" class="btn btn-sm btn-outline-secondary">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer / Coach Notes -->
+                        @if (!string.IsNullOrEmpty(match.CoachNotes))
+                        {
+                            <div class="card-footer bg-light py-2 px-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-chat-left-quote-fill text-primary me-1"></i>
+                                    <strong>Coach Notes:</strong> @match.CoachNotes
+                                </small>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- TAB 2: RAW INDIVIDUAL RECORDS TABLE -->
+    <div class="tab-pane fade" id="individualLogs" role="tabpanel">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Player</th>
+                                <th>Team</th>
+                                <th>Opponent</th>
+                                <th>Result</th>
+                                <th>Logged By</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Records.Any())
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">No individual records found.</td>
+                                </tr>
+                            }
+                            @foreach (var rec in Model.Records)
+                            {
+                                <tr>
+                                    <td>@rec.MatchDate.ToString("yyyy-MM-dd")</td>
+                                    <td class="fw-bold">@rec.Player.FullName</td>
+                                    <td><span class="badge bg-dark">@rec.Team.Name</span></td>
+                                    <td>@(rec.Opponent ?? "Practice / Scrim")</td>
+                                    <td>
+                                        <span class="badge @(rec.Result == "Win" ? "bg-success" : rec.Result == "Loss" ? "bg-danger" : "bg-warning")">
+                                            @rec.Result
+                                        </span>
+                                    </td>
+                                    <td><small class="text-muted">@rec.LoggedByUser?.FullName</small></td>
+                                    <td class="text-end">
+                                        <a asp-action="Details" asp-route-id="@rec.Id" class="btn btn-sm btn-outline-info"><i class="bi bi-eye me-1"></i>Stats</a>
+                                        @if (User.IsInRole("Owner") || User.IsInRole("Coach"))
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@rec.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                                            <form asp-action="Delete" asp-route-id="@rec.Id" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this record?');"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
