@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using Esports.Services;
+
 namespace Esports.Controllers
 {
     [Authorize]
@@ -14,13 +16,16 @@ namespace Esports.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IStatsCalculatorService _statsCalculator;
 
         public DashboardController(
             ApplicationDbContext context,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IStatsCalculatorService statsCalculator)
         {
             _context = context;
             _userManager = userManager;
+            _statsCalculator = statsCalculator;
         }
 
         private string? GetCurrentUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -124,13 +129,64 @@ namespace Esports.Controllers
                     .AsNoTracking()
                     .ToListAsync();
 
-                viewModel.RecentRecords = await _context.PlayerMatchRecords
+                var records = await _context.PlayerMatchRecords
                     .Where(r => r.TeamId == activeStaffRecord.TeamId)
                     .Include(r => r.Player)
+                    .Include(r => r.Team)
                     .OrderByDescending(r => r.MatchDate)
-                    .Take(5)
+                    .ThenByDescending(r => r.Id)
                     .AsNoTracking()
                     .ToListAsync();
+
+                var playerRoles = await _context.TeamMemberships
+                    .Where(tm => tm.TeamId == activeStaffRecord.TeamId && tm.LeftDate == null)
+                    .Include(tm => tm.GameRole)
+                    .ToDictionaryAsync(tm => tm.UserId, tm => tm.GameRole != null ? tm.GameRole.RoleName : "Player");
+
+                viewModel.RecentMatches = records
+                    .GroupBy(r => new { Opponent = r.Opponent ?? "Scrim", Date = r.MatchDate.Date, r.Result })
+                    .Select(g =>
+                    {
+                        var rawCoachNotes = g.FirstOrDefault(r => !string.IsNullOrEmpty(r.CoachNotes))?.CoachNotes;
+                        if (!string.IsNullOrEmpty(rawCoachNotes) && rawCoachNotes.StartsWith("[Match MVP] "))
+                        {
+                            rawCoachNotes = rawCoachNotes.Substring("[Match MVP] ".Length).Trim();
+                        }
+
+                        var players = g.Select(r =>
+                        {
+                            var stats = _statsCalculator.ParseStatsJson(r.StatsJson);
+                            var role = playerRoles.TryGetValue(r.PlayerId, out var rName) ? rName : "Player";
+                            return new PlayerMatchRecordItemViewModel
+                            {
+                                RecordId = r.Id,
+                                PlayerId = r.PlayerId,
+                                PlayerName = r.Player?.FullName ?? "Player",
+                                RoleName = role,
+                                Kills = stats.Kills,
+                                Deaths = stats.Deaths,
+                                Assists = stats.Assists,
+                                Score = stats.Score,
+                                IsMvp = r.CoachNotes?.Contains("[Match MVP]") == true || r.CoachNotes?.Contains("[MVP]") == true
+                            };
+                        }).ToList();
+
+                        return new TeamMatchGroupViewModel
+                        {
+                            TeamId = activeStaffRecord.TeamId,
+                            TeamName = activeStaffRecord.Team?.Name ?? "Team",
+                            Opponent = g.Key.Opponent,
+                            MatchDate = g.Key.Date,
+                            Result = g.Key.Result,
+                            CoachNotes = rawCoachNotes,
+                            Players = players
+                        };
+                    })
+                    .OrderByDescending(m => m.MatchDate)
+                    .Take(5)
+                    .ToList();
+
+                viewModel.RecentRecords = records.Take(5).ToList();
             }
 
             return View(viewModel);

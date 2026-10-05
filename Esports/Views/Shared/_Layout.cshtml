@@ -64,11 +64,17 @@
                     <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <li class="nav-item me-3 text-light">
+                            <li class="nav-item me-2">
+                                <a class="nav-link text-light d-flex align-items-center" asp-controller="Account" asp-action="Profile" title="View & Edit Profile">
+                                    <i class="bi bi-person-circle fs-5 me-1 text-info"></i>
+                                    <span>Profile</span>
+                                </a>
+                            </li>
+                            <li class="nav-item me-3 text-light d-none d-md-flex align-items-center">
                                 <span class="badge bg-secondary me-1">
                                     @(User.IsInRole("Owner") ? "Owner" : User.IsInRole("Coach") ? "Coach" : "Player")
                                 </span>
-                                <span class="fw-semibold">@User.Identity.Name</span>
+                                <span class="fw-semibold small">@User.Identity.Name</span>
                             </li>
                             <li class="nav-item">
                                 <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">

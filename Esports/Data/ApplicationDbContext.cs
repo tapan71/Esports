@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Esports.Models;
 
@@ -12,6 +12,7 @@ namespace Esports.Data
         public DbSet<Game> Games { get; set; }
         public DbSet<GameRole> GameRoles { get; set; }
         public DbSet<Team> Teams { get; set; }
+        public DbSet<TeamLogo> TeamLogos { get; set; }
         public DbSet<TeamStaff> TeamStaff { get; set; }
         public DbSet<TeamMembership> TeamMemberships { get; set; }
         public DbSet<DailySchedule> DailySchedules { get; set; }
@@ -40,6 +41,13 @@ namespace Esports.Data
                 .WithMany()
                 .HasForeignKey(t => t.OwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ---------- TeamLogo (1-to-1 with Team) ----------
+            modelBuilder.Entity<TeamLogo>()
+                .HasOne(tl => tl.Team)
+                .WithOne(t => t.TeamLogo)
+                .HasForeignKey<TeamLogo>(tl => tl.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ---------- GameRole ----------
             modelBuilder.Entity<GameRole>()

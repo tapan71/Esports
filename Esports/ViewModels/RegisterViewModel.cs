@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Esports.ViewModels
 {
@@ -14,6 +14,12 @@ namespace Esports.ViewModels
         [Phone]
         [Display(Name = "Phone Number")]
         public string? PhoneNumber { get; set; }
+
+        [Display(Name = "Profile Photo / Avatar File")]
+        public IFormFile? ProfilePhotoFile { get; set; }
+
+        [Display(Name = "Or Photo URL")]
+        public string? ProfilePhotoUrl { get; set; }
 
         [Required, DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;

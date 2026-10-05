@@ -6,16 +6,11 @@
 <div class="card shadow-sm border-0 mb-4 bg-dark text-white p-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center">
         <div class="d-flex align-items-center">
-            @if (!string.IsNullOrEmpty(Model.Team.LogoUrl))
-            {
-                <img src="@Model.Team.LogoUrl" alt="logo" class="rounded me-3 border" style="width:64px;height:64px;object-fit:cover;" />
-            }
-            else
-            {
-                <div class="rounded bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width:64px;height:64px;">
-                    <i class="bi bi-shield-fill fs-2"></i>
-                </div>
-            }
+            <img src="@(!string.IsNullOrEmpty(Model.Team.LogoUrl) ? Model.Team.LogoUrl : "/images/default-team-logo.svg")" 
+                 alt="@Model.Team.Name logo" 
+                 class="rounded me-3 border" 
+                 style="width:64px;height:64px;object-fit:cover;" 
+                 onerror="this.onerror=null;this.src='/images/default-team-logo.svg';" />
             <div>
                 <h2 class="fw-bold mb-0">@Model.Team.Name</h2>
                 <p class="text-white-50 mb-0">Game: <span class="badge bg-primary">@Model.Team.Game?.Name</span> | Founded: @Model.Team.CreatedAt.ToString("MMM yyyy")</p>
@@ -107,10 +102,11 @@
 
 <!-- Recent Matches & Tournaments -->
 <div class="row g-4">
-    <div class="col-lg-6">
+    <div class="col-lg-7">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-success me-2"></i>Recent Team Matches</h5>
+                <a asp-controller="Record" asp-action="Index" asp-route-teamId="@Model.Team.Id" class="btn btn-sm btn-outline-success">View All</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -119,25 +115,51 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Opponent</th>
-                                <th>Player</th>
                                 <th>Result</th>
+                                <th>Team KDA</th>
+                                <th>Top Performer / MVP</th>
+                                <th class="text-end">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @if (!Model.RecentMatches.Any())
+                            @if (!Model.RecentMatchGroups.Any())
                             {
                                 <tr>
-                                    <td colspan="4" class="text-center py-3 text-muted">No recent match records.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">No recent match records.</td>
                                 </tr>
                             }
-                            @foreach (var m in Model.RecentMatches)
+                            @foreach (var match in Model.RecentMatchGroups)
                             {
+                                var isWin = string.Equals(match.Result, "Win", StringComparison.OrdinalIgnoreCase);
+                                var mvp = match.Players.FirstOrDefault(p => p.IsMvp) ?? match.Players.OrderByDescending(p => p.Score).FirstOrDefault();
                                 <tr>
-                                    <td>@m.MatchDate.ToString("yyyy-MM-dd")</td>
-                                    <td>@(m.Opponent ?? "Scrim")</td>
-                                    <td>@m.Player.FullName</td>
+                                    <td class="text-nowrap fw-semibold">@match.MatchDate.ToString("yyyy-MM-dd")</td>
+                                    <td class="fw-bold">
+                                        <span>vs @match.Opponent</span>
+                                    </td>
                                     <td>
-                                        <span class="badge @(m.Result == "Win" ? "bg-success" : "bg-danger")">@m.Result</span>
+                                        <span class="badge @(isWin ? "bg-success" : "bg-danger")">@match.Result</span>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <span class="fw-semibold text-dark">@match.TotalKills</span> /
+                                        <span class="text-danger">@match.TotalDeaths</span> /
+                                        <span class="text-info">@match.TotalAssists</span>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        @if (mvp != null)
+                                        {
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>@mvp.PlayerName</span>
+                                            <small class="text-muted ms-1">(@mvp.RoleName)</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-controller="Record" asp-action="Index" asp-route-teamId="@Model.Team.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
                                     </td>
                                 </tr>
                             }
@@ -148,7 +170,7 @@
         </div>
     </div>
 
-    <div class="col-lg-6">
+    <div class="col-lg-5">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0 fw-bold"><i class="bi bi-trophy-fill text-warning me-2"></i>Tournament History</h5>

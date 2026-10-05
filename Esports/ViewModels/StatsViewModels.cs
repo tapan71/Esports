@@ -46,6 +46,7 @@ namespace Esports.ViewModels
         public int TournamentsCount { get; set; }
         public List<PlayerSummaryDto> PlayerSummaries { get; set; } = new();
         public List<PlayerMatchRecord> RecentMatches { get; set; } = new();
+        public List<TeamMatchGroupViewModel> RecentMatchGroups { get; set; } = new();
         public List<Tournament> Tournaments { get; set; } = new();
     }
 }

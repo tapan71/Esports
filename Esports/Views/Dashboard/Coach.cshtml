@@ -30,10 +30,11 @@ else
         <div class="col-md-4">
             <div class="card shadow-sm border-0 p-3 bg-dark text-white">
                 <div class="d-flex align-items-center">
-                    @if (!string.IsNullOrEmpty(Model.AssignedTeam.LogoUrl))
-                    {
-                        <img src="@Model.AssignedTeam.LogoUrl" alt="logo" class="rounded me-3" style="width:50px;height:50px;object-fit:cover;" />
-                    }
+                    <img src="@(!string.IsNullOrEmpty(Model.AssignedTeam.LogoUrl) ? Model.AssignedTeam.LogoUrl : "/images/default-team-logo.svg")" 
+                         alt="@Model.AssignedTeam.Name logo" 
+                         class="rounded me-3 border" 
+                         style="width:50px;height:50px;object-fit:cover;" 
+                         onerror="this.onerror=null;this.src='/images/default-team-logo.svg';" />
                     <div>
                         <h4 class="fw-bold mb-0">@Model.AssignedTeam.Name</h4>
                         <span class="badge bg-primary">@Model.AssignedTeam.Game?.Name</span>
@@ -83,8 +84,15 @@ else
                                 @foreach (var m in Model.ActiveRoster)
                                 {
                                     <tr>
-                                        <td class="fw-semibold">@m.User.FullName</td>
-                                        <td><span class="badge bg-info text-dark">@m.GameRole.RoleName</span></td>
+                                        <td class="fw-semibold">
+                                            <img src="@(!string.IsNullOrEmpty(m.User?.ProfilePhotoUrl) ? m.User.ProfilePhotoUrl : "/images/default-user-avatar.svg")" 
+                                                 alt="@m.User?.FullName" 
+                                                 class="rounded-circle border me-2" 
+                                                 style="width:28px;height:28px;object-fit:cover;"
+                                                 onerror="this.onerror=null;this.src='/images/default-user-avatar.svg';" />
+                                            @m.User?.FullName
+                                        </td>
+                                        <td><span class="badge bg-info text-dark">@m.GameRole?.RoleName</span></td>
                                         <td>@m.JoinedDate.ToString("MMM dd, yyyy")</td>
                                         <td class="text-end">
                                             <a asp-controller="Stats" asp-action="Player" asp-route-id="@m.UserId" class="btn btn-sm btn-outline-secondary">Stats</a>
@@ -108,30 +116,52 @@ else
                             <thead class="table-light">
                                 <tr>
                                     <th>Date</th>
-                                    <th>Player</th>
                                     <th>Opponent</th>
                                     <th>Result</th>
-                                    <th class="text-end">Details</th>
+                                    <th>Team KDA</th>
+                                    <th>Top Performer / MVP</th>
+                                    <th class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @if (!Model.RecentRecords.Any())
+                                @if (!Model.RecentMatches.Any())
                                 {
                                     <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">No recent match logs found.</td>
+                                        <td colspan="6" class="text-center py-4 text-muted">No recent match logs found.</td>
                                     </tr>
                                 }
-                                @foreach (var rec in Model.RecentRecords)
+                                @foreach (var match in Model.RecentMatches)
                                 {
+                                    var isWin = string.Equals(match.Result, "Win", StringComparison.OrdinalIgnoreCase);
+                                    var mvp = match.Players.FirstOrDefault(p => p.IsMvp) ?? match.Players.OrderByDescending(p => p.Score).FirstOrDefault();
                                     <tr>
-                                        <td>@rec.MatchDate.ToString("yyyy-MM-dd")</td>
-                                        <td>@rec.Player.FullName</td>
-                                        <td>@(rec.Opponent ?? "-")</td>
+                                        <td class="text-nowrap fw-semibold">@match.MatchDate.ToString("yyyy-MM-dd")</td>
+                                        <td class="fw-bold">
+                                            <span>vs @match.Opponent</span>
+                                        </td>
                                         <td>
-                                            <span class="badge @(rec.Result == "Win" ? "bg-success" : "bg-danger")">@rec.Result</span>
+                                            <span class="badge @(isWin ? "bg-success" : "bg-danger")">@match.Result</span>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            <span class="fw-semibold text-dark">@match.TotalKills</span> /
+                                            <span class="text-danger">@match.TotalDeaths</span> /
+                                            <span class="text-info">@match.TotalAssists</span>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            @if (mvp != null)
+                                            {
+                                                <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>@mvp.PlayerName</span>
+                                                <small class="text-muted ms-1">(@mvp.RoleName)</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
                                         </td>
                                         <td class="text-end">
-                                            <a asp-controller="Record" asp-action="Details" asp-route-id="@rec.Id" class="btn btn-sm btn-outline-info">View</a>
+                                            <a asp-controller="Record" asp-action="Index" asp-route-teamId="@Model.AssignedTeam.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye me-1"></i>View
+                                            </a>
                                         </td>
                                     </tr>
                                 }

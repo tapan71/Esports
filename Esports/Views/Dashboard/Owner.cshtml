@@ -78,10 +78,11 @@
                                 var coach = team.TeamStaff.FirstOrDefault(ts => ts.RemovedDate == null);
                                 <tr>
                                     <td class="fw-semibold">
-                                        @if (!string.IsNullOrEmpty(team.LogoUrl))
-                                        {
-                                            <img src="@team.LogoUrl" alt="logo" class="rounded-circle me-2" style="width:28px;height:28px;object-fit:cover;" />
-                                        }
+                                        <img src="@(!string.IsNullOrEmpty(team.LogoUrl) ? team.LogoUrl : "/images/default-team-logo.svg")" 
+                                             alt="@team.Name logo" 
+                                             class="rounded-circle me-2 border" 
+                                             style="width:28px;height:28px;object-fit:cover;" 
+                                             onerror="this.onerror=null;this.src='/images/default-team-logo.svg';" />
                                         @team.Name
                                     </td>
                                     <td><span class="badge bg-dark">@team.Game?.Name</span></td>

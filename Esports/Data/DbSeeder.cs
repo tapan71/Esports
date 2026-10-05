@@ -14,6 +14,9 @@ namespace Esports.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
+            // 0. Automatically apply any pending migrations (e.g. TeamLogos table)
+            await context.Database.MigrateAsync();
+
             // 1. Roles
             string[] roles = { "Owner", "Coach", "Player" };
             foreach (var role in roles)
@@ -75,6 +78,7 @@ namespace Esports.Data
 
             // 3. Seed Users (Password: Password123!)
             const string defaultPassword = "Password123!";
+            const string defaultUserAvatarUrl = "/images/default-user-avatar.svg";
 
             async Task<ApplicationUser> EnsureUser(string email, string fullName, string roleName)
             {
@@ -87,6 +91,7 @@ namespace Esports.Data
                         Email = email,
                         FullName = fullName,
                         EmailConfirmed = true,
+                        ProfilePhotoUrl = defaultUserAvatarUrl,
                         CreatedAt = DateTime.UtcNow
                     };
                     var result = await userManager.CreateAsync(user, defaultPassword);
@@ -94,6 +99,11 @@ namespace Esports.Data
                     {
                         await userManager.AddToRoleAsync(user, roleName);
                     }
+                }
+                else if (string.IsNullOrEmpty(user.ProfilePhotoUrl))
+                {
+                    user.ProfilePhotoUrl = defaultUserAvatarUrl;
+                    await userManager.UpdateAsync(user);
                 }
                 return user;
             }
@@ -114,6 +124,18 @@ namespace Esports.Data
             var keria = await EnsureUser("keria@t1.com", "Ryu 'Keria' Min-seok", "Player");
             var caps = await EnsureUser("caps@g2.com", "Rasmus 'Caps' Winther", "Player");
 
+            // Ensure any existing registered users without avatar receive default avatar
+            var usersWithoutAvatar = await userManager.Users
+                .Where(u => string.IsNullOrEmpty(u.ProfilePhotoUrl))
+                .ToListAsync();
+            foreach (var u in usersWithoutAvatar)
+            {
+                u.ProfilePhotoUrl = defaultUserAvatarUrl;
+                await userManager.UpdateAsync(u);
+            }
+
+            const string defaultTeamLogoUrl = "/images/default-team-logo.svg";
+
             // 4. Teams
             var teamT1 = await context.Teams.FirstOrDefaultAsync(t => t.Name == "T1");
             if (teamT1 == null)
@@ -123,7 +145,7 @@ namespace Esports.Data
                     Name = "T1",
                     GameId = lol.Id,
                     OwnerId = ownerT1.Id,
-                    LogoUrl = "https://upload.wikimedia.org/wikipedia/en/thumb/f/f9/T1_esports_logo.svg/440px-T1_esports_logo.svg.png",
+                    LogoUrl = defaultTeamLogoUrl,
                     CreatedAt = DateTime.UtcNow.AddMonths(-12)
                 };
                 context.Teams.Add(teamT1);
@@ -138,12 +160,39 @@ namespace Esports.Data
                     Name = "G2 Esports",
                     GameId = lol.Id,
                     OwnerId = ownerG2.Id,
-                    LogoUrl = "https://upload.wikimedia.org/wikipedia/en/thumb/1/12/G2_Esports_logo.svg/440px-G2_Esports_logo.svg.png",
+                    LogoUrl = defaultTeamLogoUrl,
                     CreatedAt = DateTime.UtcNow.AddMonths(-10)
                 };
                 context.Teams.Add(teamG2);
                 await context.SaveChangesAsync();
             }
+
+            // Ensure all existing teams in the database use the default logo and have matching TeamLogo entities
+            var allTeams = await context.Teams.Include(t => t.TeamLogo).ToListAsync();
+            foreach (var team in allTeams)
+            {
+                team.LogoUrl = defaultTeamLogoUrl;
+
+                if (team.TeamLogo == null)
+                {
+                    context.TeamLogos.Add(new TeamLogo
+                    {
+                        TeamId = team.Id,
+                        LogoUrl = defaultTeamLogoUrl,
+                        UploadedAt = team.CreatedAt
+                    });
+                }
+                else
+                {
+                    team.TeamLogo.LogoUrl = defaultTeamLogoUrl;
+                    team.TeamLogo.OriginalFileName = null;
+                    team.TeamLogo.StoredFileName = null;
+                    team.TeamLogo.ContentType = "image/svg+xml";
+                    team.TeamLogo.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await context.SaveChangesAsync();
 
             // 5. Team Staff (Coach assignment)
             if (!await context.TeamStaff.AnyAsync(ts => ts.TeamId == teamT1.Id && ts.UserId == coachT1.Id))

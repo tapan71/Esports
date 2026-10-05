@@ -7,16 +7,11 @@
     <div class="card-body p-4">
         <div class="d-flex flex-wrap justify-content-between align-items-center">
             <div class="d-flex align-items-center me-3 mb-2">
-                @if (!string.IsNullOrEmpty(Model.Team.LogoUrl))
-                {
-                    <img src="@Model.Team.LogoUrl" alt="logo" class="rounded me-3 border" style="width:72px;height:72px;object-fit:cover;" />
-                }
-                else
-                {
-                    <div class="rounded bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width:72px;height:72px;">
-                        <i class="bi bi-shield-fill fs-1"></i>
-                    </div>
-                }
+                <img src="@(!string.IsNullOrEmpty(Model.Team.LogoUrl) ? Model.Team.LogoUrl : "/images/default-team-logo.svg")" 
+                     alt="@Model.Team.Name logo" 
+                     class="rounded me-3 border" 
+                     style="width:72px;height:72px;object-fit:cover;" 
+                     onerror="this.onerror=null;this.src='/images/default-team-logo.svg';" />
                 <div>
                     <h2 class="fw-bold mb-0">@Model.Team.Name</h2>
                     <p class="text-muted mb-0">Game: <span class="badge bg-dark">@Model.Team.Game?.Name</span> | Created: @Model.Team.CreatedAt.ToString("MMM dd, yyyy")</p>
@@ -50,7 +45,11 @@
                 @if (Model.ActiveCoach != null)
                 {
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-person-circle fs-1 text-secondary me-3"></i>
+                        <img src="@(!string.IsNullOrEmpty(Model.ActiveCoach.User?.ProfilePhotoUrl) ? Model.ActiveCoach.User.ProfilePhotoUrl : "/images/default-user-avatar.svg")" 
+                             alt="@Model.ActiveCoach.User?.FullName avatar" 
+                             class="rounded-circle border me-3" 
+                             style="width:52px;height:52px;object-fit:cover;"
+                             onerror="this.onerror=null;this.src='/images/default-user-avatar.svg';" />
                         <div>
                             <h5 class="fw-bold mb-0">@Model.ActiveCoach.User?.FullName</h5>
                             <small class="text-muted">@Model.ActiveCoach.User?.Email</small><br />
@@ -109,7 +108,14 @@
                             @foreach (var p in Model.ActiveRoster)
                             {
                                 <tr>
-                                    <td class="fw-semibold">@p.User?.FullName</td>
+                                    <td class="fw-semibold">
+                                        <img src="@(!string.IsNullOrEmpty(p.User?.ProfilePhotoUrl) ? p.User.ProfilePhotoUrl : "/images/default-user-avatar.svg")" 
+                                             alt="@p.User?.FullName" 
+                                             class="rounded-circle border me-2" 
+                                             style="width:28px;height:28px;object-fit:cover;"
+                                             onerror="this.onerror=null;this.src='/images/default-user-avatar.svg';" />
+                                        @p.User?.FullName
+                                    </td>
                                     <td><span class="badge bg-info text-dark">@p.GameRole?.RoleName</span></td>
                                     <td>@p.JoinedDate.ToString("MMM dd, yyyy")</td>
                                     <td class="text-end">

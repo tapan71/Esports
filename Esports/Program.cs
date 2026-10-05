@@ -6,8 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// MVC
-builder.Services.AddControllersWithViews();
+// MVC with global no-cache policy to prevent browser back-button from serving stale cached pages
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.ResponseCacheAttribute
+    {
+        NoStore = true,
+        Location = Microsoft.AspNetCore.Mvc.ResponseCacheLocation.None
+    });
+});
 
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -30,11 +37,23 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPrizeCalculatorService, PrizeCalculatorService>();
 builder.Services.AddScoped<IStatsCalculatorService, StatsCalculatorService>();
 
-// Where to send users who are not logged in / not allowed
+// Cookie & Session Management
 builder.Services.ConfigureApplicationCookie(options =>
 {
+    options.Cookie.Name = ".Esports.Auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(30); // 30-minute idle session timeout
+    options.SlidingExpiration = true;                 // Resets expiration timer upon user interaction
+});
+
+// Immediately validate security stamps
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.Zero;
 });
 
 var app = builder.Build();

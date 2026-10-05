@@ -1,4 +1,4 @@
-﻿namespace Esports.Models
+namespace Esports.Models
 {
     public class Team
     {
@@ -14,6 +14,7 @@
         public ApplicationUser Owner { get; set; }
 
         // Navigation properties
+        public TeamLogo? TeamLogo { get; set; }
         public ICollection<TeamStaff> TeamStaff { get; set; }
         public ICollection<TeamMembership> TeamMemberships { get; set; }
 

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Esports.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Esports.ViewModels
@@ -12,8 +13,10 @@ namespace Esports.ViewModels
         public string Name { get; set; } = string.Empty;
 
         [Display(Name = "Logo URL")]
-        [Url(ErrorMessage = "Please enter a valid URL.")]
-        public string LogoUrl { get; set; } = string.Empty;
+        public string? LogoUrl { get; set; }
+
+        [Display(Name = "Upload Logo Image")]
+        public IFormFile? LogoFile { get; set; }
 
         [Required(ErrorMessage = "Please select a game.")]
         [Display(Name = "Game")]
@@ -31,9 +34,14 @@ namespace Esports.ViewModels
         [Display(Name = "Team Name")]
         public string Name { get; set; } = string.Empty;
 
+        [Display(Name = "Current Logo")]
+        public string? CurrentLogoUrl { get; set; }
+
         [Display(Name = "Logo URL")]
-        [Url(ErrorMessage = "Please enter a valid URL.")]
-        public string LogoUrl { get; set; } = string.Empty;
+        public string? LogoUrl { get; set; }
+
+        [Display(Name = "Upload New Logo Image")]
+        public IFormFile? LogoFile { get; set; }
 
         [Required(ErrorMessage = "Please select a game.")]
         [Display(Name = "Game")]

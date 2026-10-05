@@ -8,7 +8,11 @@ namespace Esports.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return RedirectToAction("MyDashboard", "Account");
+            }
+            return RedirectToAction("Login", "Account");
         }
 
         public IActionResult Privacy()

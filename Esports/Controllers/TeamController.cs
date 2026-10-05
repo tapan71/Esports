@@ -15,16 +15,67 @@ namespace Esports.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IWebHostEnvironment _webHostEnvironment;
+
+        public const string DefaultLogoUrl = "/images/default-team-logo.svg";
 
         public TeamController(
             ApplicationDbContext context,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IWebHostEnvironment webHostEnvironment)
         {
             _context = context;
             _userManager = userManager;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         private string? GetCurrentUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        private async Task<TeamLogo?> ProcessLogoUploadAsync(IFormFile? logoFile, string? logoUrl)
+        {
+            if (logoFile != null && logoFile.Length > 0)
+            {
+                var webRoot = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var uploadsFolder = Path.Combine(webRoot, "uploads", "team-logos");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var ext = Path.GetExtension(logoFile.FileName);
+                var storedFileName = $"{Guid.NewGuid()}{ext}";
+                var filePath = Path.Combine(uploadsFolder, storedFileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await logoFile.CopyToAsync(stream);
+                }
+
+                return new TeamLogo
+                {
+                    LogoUrl = $"/uploads/team-logos/{storedFileName}",
+                    OriginalFileName = Path.GetFileName(logoFile.FileName),
+                    StoredFileName = storedFileName,
+                    ContentType = logoFile.ContentType,
+                    FileSizeBytes = logoFile.Length,
+                    UploadedAt = DateTime.UtcNow
+                };
+            }
+            else if (!string.IsNullOrWhiteSpace(logoUrl))
+            {
+                return new TeamLogo
+                {
+                    LogoUrl = logoUrl.Trim(),
+                    OriginalFileName = null,
+                    StoredFileName = null,
+                    ContentType = null,
+                    FileSizeBytes = null,
+                    UploadedAt = DateTime.UtcNow
+                };
+            }
+
+            return null;
+        }
 
         private async Task<bool> IsUserTeamOwnerAsync(int teamId, string userId)
         {
@@ -67,6 +118,7 @@ namespace Esports.Controllers
             IQueryable<Team> query = _context.Teams
                 .Include(t => t.Game)
                 .Include(t => t.Owner)
+                .Include(t => t.TeamLogo)
                 .Include(t => t.TeamStaff.Where(ts => ts.RemovedDate == null))
                     .ThenInclude(ts => ts.User)
                 .Include(t => t.TeamMemberships.Where(tm => tm.LeftDate == null));
@@ -111,6 +163,7 @@ namespace Esports.Controllers
                     .ThenInclude(tm => tm.User)
                 .Include(t => t.TeamMemberships)
                     .ThenInclude(tm => tm.GameRole)
+                .Include(t => t.TeamLogo)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.Id == id);
 
@@ -195,13 +248,25 @@ namespace Esports.Controllers
                 return View(model);
             }
 
+            var teamLogo = await ProcessLogoUploadAsync(model.LogoFile, model.LogoUrl);
+            if (teamLogo == null)
+            {
+                teamLogo = new TeamLogo
+                {
+                    LogoUrl = DefaultLogoUrl,
+                    ContentType = "image/svg+xml",
+                    UploadedAt = DateTime.UtcNow
+                };
+            }
+
             var team = new Team
             {
                 Name = model.Name.Trim(),
-                LogoUrl = model.LogoUrl?.Trim() ?? string.Empty,
+                LogoUrl = teamLogo.LogoUrl,
                 GameId = model.GameId,
                 OwnerId = userId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                TeamLogo = teamLogo
             };
 
             _context.Teams.Add(team);
@@ -251,6 +316,7 @@ namespace Esports.Controllers
             {
                 Id = team.Id,
                 Name = team.Name,
+                CurrentLogoUrl = team.LogoUrl,
                 LogoUrl = team.LogoUrl,
                 GameId = team.GameId,
                 AvailableGames = games
@@ -305,15 +371,86 @@ namespace Esports.Controllers
                 return View(model);
             }
 
-            var team = await _context.Teams.FirstOrDefaultAsync(t => t.Id == id);
+            var team = await _context.Teams
+                .Include(t => t.TeamLogo)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
             if (team == null)
             {
                 return NotFound();
             }
 
             team.Name = model.Name.Trim();
-            team.LogoUrl = model.LogoUrl?.Trim() ?? string.Empty;
             team.GameId = model.GameId;
+
+            if (model.LogoFile != null && model.LogoFile.Length > 0)
+            {
+                var newLogo = await ProcessLogoUploadAsync(model.LogoFile, null);
+                if (newLogo != null)
+                {
+                    if (team.TeamLogo != null)
+                    {
+                        team.TeamLogo.LogoUrl = newLogo.LogoUrl;
+                        team.TeamLogo.OriginalFileName = newLogo.OriginalFileName;
+                        team.TeamLogo.StoredFileName = newLogo.StoredFileName;
+                        team.TeamLogo.ContentType = newLogo.ContentType;
+                        team.TeamLogo.FileSizeBytes = newLogo.FileSizeBytes;
+                        team.TeamLogo.UpdatedAt = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        newLogo.TeamId = team.Id;
+                        team.TeamLogo = newLogo;
+                    }
+                    team.LogoUrl = newLogo.LogoUrl;
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(model.LogoUrl) && model.LogoUrl != team.LogoUrl)
+            {
+                if (team.TeamLogo != null)
+                {
+                    team.TeamLogo.LogoUrl = model.LogoUrl.Trim();
+                    team.TeamLogo.OriginalFileName = null;
+                    team.TeamLogo.StoredFileName = null;
+                    team.TeamLogo.ContentType = null;
+                    team.TeamLogo.FileSizeBytes = null;
+                    team.TeamLogo.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    team.TeamLogo = new TeamLogo
+                    {
+                        TeamId = team.Id,
+                        LogoUrl = model.LogoUrl.Trim(),
+                        UploadedAt = DateTime.UtcNow
+                    };
+                }
+                team.LogoUrl = model.LogoUrl.Trim();
+            }
+            else if (string.IsNullOrWhiteSpace(model.LogoUrl) && (model.LogoFile == null || model.LogoFile.Length == 0))
+            {
+                // Reset to default logo
+                if (team.TeamLogo != null)
+                {
+                    team.TeamLogo.LogoUrl = DefaultLogoUrl;
+                    team.TeamLogo.OriginalFileName = null;
+                    team.TeamLogo.StoredFileName = null;
+                    team.TeamLogo.ContentType = "image/svg+xml";
+                    team.TeamLogo.FileSizeBytes = null;
+                    team.TeamLogo.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    team.TeamLogo = new TeamLogo
+                    {
+                        TeamId = team.Id,
+                        LogoUrl = DefaultLogoUrl,
+                        ContentType = "image/svg+xml",
+                        UploadedAt = DateTime.UtcNow
+                    };
+                }
+                team.LogoUrl = DefaultLogoUrl;
+            }
 
             await _context.SaveChangesAsync();
 

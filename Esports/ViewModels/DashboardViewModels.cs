@@ -20,6 +20,7 @@ namespace Esports.ViewModels
         public List<TeamMembership> ActiveRoster { get; set; } = new();
         public List<DailySchedule> TodaySchedules { get; set; } = new();
         public List<PlayerMatchRecord> RecentRecords { get; set; } = new();
+        public List<TeamMatchGroupViewModel> RecentMatches { get; set; } = new();
     }
 
     public class PlayerDashboardViewModel

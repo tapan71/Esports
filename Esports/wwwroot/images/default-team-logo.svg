@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#090d16" />
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="50%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Outer Shield Shadow / Glow -->
+  <path d="M 100 12 L 175 42 C 175 110, 142 165, 100 188 C 58 165, 25 110, 25 42 Z" 
+        fill="url(#borderGrad)" opacity="0.35" filter="url(#neonGlow)" />
+
+  <!-- Shield Border -->
+  <path d="M 100 14 L 172 43 C 172 108, 140 162, 100 184 C 60 162, 28 108, 28 43 Z" 
+        fill="url(#borderGrad)" stroke="#38bdf8" stroke-width="1.5" />
+
+  <!-- Inner Shield -->
+  <path d="M 100 22 L 164 48 C 164 104, 135 152, 100 172 C 65 152, 36 104, 36 48 Z" 
+        fill="url(#shieldGrad)" />
+
+  <!-- Geometric Grid Pattern Lines on Shield -->
+  <path d="M 100 22 L 100 172 M 36 48 L 164 48 M 46 95 L 154 95 M 62 135 L 138 135" 
+        stroke="rgba(99, 102, 241, 0.15)" stroke-width="1.5" stroke-dasharray="2,3" fill="none" />
+
+  <!-- Central Emblem: Stylized Esports Wings & Controller Crown -->
+  <!-- Left Wing -->
+  <path d="M 100 70 L 62 65 L 48 85 L 68 88 L 52 105 L 75 102 L 65 120 L 92 110 Z" 
+        fill="url(#accentGrad)" opacity="0.9" />
+
+  <!-- Right Wing -->
+  <path d="M 100 70 L 138 65 L 152 85 L 132 88 L 148 105 L 125 102 L 135 120 L 108 110 Z" 
+        fill="url(#accentGrad)" opacity="0.9" />
+
+  <!-- Gamepad / Core Emblem -->
+  <g transform="translate(100, 104)">
+    <!-- Controller Body -->
+    <path d="M -34 -15 C -20 -28, 20 -28, 34 -15 C 42 -7, 46 15, 34 26 C 26 33, 16 28, 12 18 C 8 8, -8 8, -12 18 C -16 28, -26 33, -34 26 C -46 15, -42 -7, -34 -15 Z" 
+          fill="#1e293b" stroke="url(#accentGrad)" stroke-width="2.5" />
+
+    <!-- D-Pad (Left) -->
+    <path d="M -23 -8 L -17 -8 L -17 -14 L -13 -14 L -13 -8 L -7 -8 L -7 -4 L -13 -4 L -13 2 L -17 2 L -17 -4 L -23 -4 Z" 
+          fill="#38bdf8" />
+
+    <!-- Action Buttons (Right) -->
+    <circle cx="16" cy="-11" r="2.2" fill="#ec4899" />
+    <circle cx="22" cy="-5" r="2.2" fill="#a855f7" />
+    <circle cx="10" cy="-5" r="2.2" fill="#38bdf8" />
+    <circle cx="16" cy="1" r="2.2" fill="#10b981" />
+
+    <!-- Center Indicator / Emblem -->
+    <polygon points="0,-10 4,-3 -4,-3" fill="url(#goldGrad)" />
+    <circle cx="0" cy="1" r="2.5" fill="#f8fafc" opacity="0.8" />
+  </g>
+
+  <!-- Crown / Top Crest on Shield -->
+  <path d="M 85 46 L 92 38 L 100 44 L 108 38 L 115 46 L 100 50 Z" 
+        fill="url(#goldGrad)" stroke="#f59e0b" stroke-width="0.8" />
+
+  <!-- Star Emblems -->
+  <polygon points="100,28 102,33 107,33 103,36 105,41 100,38 95,41 97,36 93,33 98,33" 
+           fill="#fbbf24" />
+
+  <!-- Team Text Banner at Bottom -->
+  <path d="M 68 142 L 132 142 L 124 156 L 76 156 Z" 
+        fill="#0f172a" stroke="#6366f1" stroke-width="1.2" />
+  <text x="100" y="152" fill="#38bdf8" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="8.5" text-anchor="middle" letter-spacing="1.5">TEAM</text>
+</svg>

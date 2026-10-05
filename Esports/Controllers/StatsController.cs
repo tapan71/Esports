@@ -145,13 +145,61 @@ namespace Esports.Controllers
             var matches = await _context.PlayerMatchRecords
                 .Where(r => r.TeamId == id)
                 .Include(r => r.Player)
+                .Include(r => r.Team)
                 .OrderByDescending(r => r.MatchDate)
+                .ThenByDescending(r => r.Id)
                 .AsNoTracking()
                 .ToListAsync();
 
-            int wins = matches.Count(m => string.Equals(m.Result, "Win", StringComparison.OrdinalIgnoreCase));
-            int losses = matches.Count(m => string.Equals(m.Result, "Loss", StringComparison.OrdinalIgnoreCase));
-            int draws = matches.Count - wins - losses;
+            var playerRoles = team.TeamMemberships
+                .ToDictionary(tm => tm.UserId, tm => tm.GameRole != null ? tm.GameRole.RoleName : "Player");
+
+            var matchGroups = matches
+                .GroupBy(r => new { Opponent = r.Opponent ?? "Scrim", Date = r.MatchDate.Date, r.Result })
+                .Select(g =>
+                {
+                    var rawCoachNotes = g.FirstOrDefault(r => !string.IsNullOrEmpty(r.CoachNotes))?.CoachNotes;
+                    if (!string.IsNullOrEmpty(rawCoachNotes) && rawCoachNotes.StartsWith("[Match MVP] "))
+                    {
+                        rawCoachNotes = rawCoachNotes.Substring("[Match MVP] ".Length).Trim();
+                    }
+
+                    var players = g.Select(r =>
+                    {
+                        var stats = _statsCalculator.ParseStatsJson(r.StatsJson);
+                        var role = playerRoles.TryGetValue(r.PlayerId, out var rName) ? rName : "Player";
+                        return new PlayerMatchRecordItemViewModel
+                        {
+                            RecordId = r.Id,
+                            PlayerId = r.PlayerId,
+                            PlayerName = r.Player?.FullName ?? "Player",
+                            RoleName = role,
+                            Kills = stats.Kills,
+                            Deaths = stats.Deaths,
+                            Assists = stats.Assists,
+                            Score = stats.Score,
+                            IsMvp = r.CoachNotes?.Contains("[Match MVP]") == true || r.CoachNotes?.Contains("[MVP]") == true
+                        };
+                    }).ToList();
+
+                    return new TeamMatchGroupViewModel
+                    {
+                        TeamId = id,
+                        TeamName = team.Name,
+                        Opponent = g.Key.Opponent,
+                        MatchDate = g.Key.Date,
+                        Result = g.Key.Result,
+                        CoachNotes = rawCoachNotes,
+                        Players = players
+                    };
+                })
+                .OrderByDescending(m => m.MatchDate)
+                .ToList();
+
+            int totalTeamMatches = matchGroups.Count;
+            int wins = matchGroups.Count(m => string.Equals(m.Result, "Win", StringComparison.OrdinalIgnoreCase));
+            int losses = matchGroups.Count(m => string.Equals(m.Result, "Loss", StringComparison.OrdinalIgnoreCase));
+            int draws = totalTeamMatches - wins - losses;
 
             var tournaments = await _context.Tournaments
                 .Where(t => t.TeamId == id)
@@ -177,7 +225,7 @@ namespace Esports.Controllers
             var viewModel = new TeamStatsViewModel
             {
                 Team = team,
-                TotalMatches = matches.Count,
+                TotalMatches = totalTeamMatches,
                 TotalWins = wins,
                 TotalLosses = losses,
                 TotalDraws = draws,
@@ -185,6 +233,7 @@ namespace Esports.Controllers
                 TournamentsCount = tournaments.Count,
                 PlayerSummaries = playerSummaries,
                 RecentMatches = matches.Take(10).ToList(),
+                RecentMatchGroups = matchGroups.Take(10).ToList(),
                 Tournaments = tournaments
             };
 
